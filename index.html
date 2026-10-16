@@ -145,7 +145,7 @@
 
         <div class="px-4 py-2 space-y-3 flex-1">
           <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">등록된 사용자 (<span id="friendCount">0</span>)</span>
+            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">등록된 친구 (<span id="friendCount">0</span>)</span>
           </div>
           <div id="friendListContainer" class="space-y-2"></div>
         </div>
@@ -621,10 +621,6 @@
         return;
       }
       
-      if (window.userName && window.userName !== name) {
-        db.ref('kakao_chat_app/users/' + window.userName).remove();
-      }
-
       window.userName = name;
       window.userAvatarEmoji = faceEmojis[Math.floor(Math.random() * faceEmojis.length)];
 
@@ -645,8 +641,8 @@
     function updateUserPresence() {
       if (!window.userName) return;
       const userRef = db.ref('kakao_chat_app/users/' + window.userName);
+      // 기존에 존재하던 onDisconnect().remove()를 제거하여 앱을 나가도 데이터가 지워지지 않고 남아있게 합니다.
       userRef.set({ name: window.userName, emoji: window.userAvatarEmoji, lastActive: Date.now() });
-      userRef.onDisconnect().remove();
     }
 
     document.addEventListener('visibilitychange', () => {
@@ -750,8 +746,8 @@
         const emoji = u.emoji || window.getUserAvatar(u.name, allUserNames).emoji;
         const isMe = u.name === window.userName;
         
-        // 마지막 활동 시간 기준 온라인/오프라인 판정 (30초 이내면 온라인)
-        const diffSec = u.lastActive ? Math.floor((now - u.lastActive) / 1000) : 9999;
+        // 30초 이내 활동이 있으면 온라인, 아니면 오프라인 처리
+        const diffSec = u.lastActive ? Math.floor((now - u.lastActive) / 1000) : 99999;
         const isOnline = diffSec <= 30;
 
         let statusText = '오프라인';
@@ -763,16 +759,16 @@
           statusDotColor = 'bg-emerald-500 animate-pulse';
           statusTextColor = 'text-emerald-600';
         } else if (diffSec < 60) {
-          statusText = '방금 전 다녀감';
+          statusText = '방금 전 오프라인';
         } else if (diffSec < 3600) {
           const mins = Math.floor(diffSec / 60);
-          statusText = `${mins}분 전 다녀감`;
+          statusText = `${mins}분 전 오프라인`;
         } else if (diffSec < 86400) {
           const hours = Math.floor(diffSec / 3600);
-          statusText = `${hours}시간 전 다녀감`;
+          statusText = `${hours}시간 전 오프라인`;
         } else {
           const days = Math.floor(diffSec / 86400);
-          statusText = `${days}일 전 다녀감`;
+          statusText = `${days}일 전 오프라인`;
         }
 
         html += `
