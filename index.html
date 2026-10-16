@@ -389,14 +389,12 @@
   <script>
     let audioCtx = null;
 
-    // 모바일 브라우저 알림 권한 요청
     function requestNotificationPermission() {
       if ("Notification" in window && Notification.permission !== "granted") {
         Notification.requestPermission();
       }
     }
 
-    // 모바일 푸시/기기 알림 발송 함수
     function sendPushNotification(title, body) {
       if ("Notification" in window && Notification.permission === "granted") {
         try {
@@ -636,7 +634,7 @@
       updateUserPresence();
       setupRealtimeListeners();
       switchTab(window.currentTab || 'friends');
-      requestNotificationPermission(); // 알림 권한 요청
+      requestNotificationPermission();
     }
 
     function updateUserPresence() {
@@ -1039,7 +1037,6 @@
         if (previousMsgCount > 0 && msgList.length > previousMsgCount) {
           playBeepSound();
           
-          // 새로 도착한 메시지가 다른 사람이 보낸 메시지라면 스마트폰 알림 팝업 발송
           const latestMsg = msgList[msgList.length - 1];
           if (latestMsg && latestMsg.sender !== window.userName && latestMsg.type !== 'system') {
             sendPushNotification(`${latestMsg.sender} (${roomName})`, latestMsg.text);
@@ -1071,7 +1068,6 @@
 
       const roomId = window.currentRoomId;
 
-      // 1. 퇴장 메시지 저장 완료 후 퇴장 처리
       sendSystemMessage(`${window.userName}님이 퇴장하셨습니다.`, () => {
         db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
 
