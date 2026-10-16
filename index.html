@@ -179,7 +179,6 @@
         <main class="flex-1 px-3 py-3 overflow-y-auto space-y-3 no-scrollbar flex flex-col" id="chatContainer"></main>
         
         <footer class="bg-white dark:bg-slate-950 px-3 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0">
-          <!-- 키보드 추천바 방지를 위해 search 타입 및 무작위 속성 부여 -->
           <input type="search" id="messageInput" placeholder="" onkeypress="if(event.key==='Enter') sendMessage()"
             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_chat_msg_input_field"
             class="flex-1 bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-amber-400 rounded-xl px-4 py-2.5 text-sm font-medium outline-none transition text-slate-900 dark:text-white">
@@ -249,8 +248,8 @@
         </div>
         <div id="roomPasswordContainer" class="hidden">
           <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">채팅방 비밀번호</label>
-          <input type="search" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_pw_field"
+          <input type="password" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
+            autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_pw_field"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
         </div>
       </div>
@@ -272,8 +271,8 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="authRoomNameText">비밀방에 입장하기 위해 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="search" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_auth_pw_field"
+        <input type="password" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
+          autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_auth_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center">
       </div>
       <div class="flex gap-2">
@@ -283,6 +282,7 @@
     </div>
   </div>
 
+  <!-- 관리자 로그인 모달 -->
   <div id="adminLoginModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
       <div class="text-center">
@@ -293,8 +293,8 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">관리자 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="search" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_admin_pw_field"
+        <input type="password" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
+          autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_admin_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center">
       </div>
       <div class="flex gap-2">
@@ -596,13 +596,38 @@
     };
 
     function initApp() {
-      const userRef = db.ref('kakao_chat_app/users/' + window.userName);
-      userRef.set({ name: window.userName, emoji: window.userAvatarEmoji, lastActive: Date.now() });
-      userRef.onDisconnect().remove();
-
+      updateUserPresence();
       setupRealtimeListeners();
       switchTab(window.currentTab || 'friends');
     }
+
+    // 사용자 접속 상태 및 주기적 갱신(하트비트) 처리 함수
+    function updateUserPresence() {
+      if (!window.userName) return;
+      const userRef = db.ref('kakao_chat_app/users/' + window.userName);
+      userRef.set({ name: window.userName, emoji: window.userAvatarEmoji, lastActive: Date.now() });
+      userRef.onDisconnect().remove();
+    }
+
+    // 모바일 홈 버튼 등으로 앱이 백그라운드에 갔다가 다시 돌아올 때 접속 상태 즉시 갱신
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && window.userName) {
+        updateUserPresence();
+      }
+    });
+
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted && window.userName) {
+        updateUserPresence();
+      }
+    });
+
+    // 10초마다 주기적으로 서버에 생존 신고 (하트비트)
+    setInterval(() => {
+      if (window.userName && document.visibilityState === 'visible') {
+        db.ref('kakao_chat_app/users/' + window.userName + '/lastActive').set(Date.now());
+      }
+    }, 10000);
 
     function setupRealtimeListeners() {
       db.ref('kakao_chat_app/users').on('value', snapshot => {
