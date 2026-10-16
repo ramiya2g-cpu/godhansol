@@ -554,8 +554,7 @@
     window.currentTab = 'friends';
     window.currentRoomId = null;
 
-    // X표시된 항목들을 제외하고 깔끔한 이모티콘들만 남김
-    const faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '👻', '🤖', '🐱', '🐶', '🦊', '🦁', '🔥', '⭐'];
+    const faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '👻', '🤖', '🐱', '🐶', '🦊', '🦁', '🔥', '⭐'];
 
     window.getUserAvatar = function(name, allUserNames = []) {
       if (!name) return { emoji: '😀' };
@@ -684,6 +683,21 @@
     window.addEventListener('beforeunload', () => {
       if (window.userName) {
         db.ref('kakao_chat_app/users/' + window.userName).update({ online: false });
+      }
+      // 채팅방에 접속 중 강제 종료 또는 새로고침 시 Firebase Server Disconnect로 퇴장 메시지 등록 예약
+      if (window.currentRoomId && window.userName) {
+        const now = new Date();
+        const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        db.ref(`kakao_chat_app/messages/${window.currentRoomId}`).push({
+          id: Date.now() + Math.random(),
+          sender: 'system',
+          text: `${window.userName}님이 퇴장하셨습니다.`,
+          time: timeStr,
+          timestamp: Date.now(),
+          type: 'system'
+        });
+        db.ref(`kakao_chat_app/room_members/${window.currentRoomId}/${window.userName}`).remove();
       }
     });
 
