@@ -206,22 +206,32 @@
 
   <!-- MODALS -->
   <div id="profileModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
       <div class="text-center">
-        <div class="w-14 h-14 bg-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-900 text-2xl font-black shadow-md">
-          <i class="fa-solid fa-comment-dots"></i>
+        <!-- 현재 선택된 프로필 이모티콘 미리보기 -->
+        <div id="selectedEmojiPreview" class="w-16 h-16 bg-amber-100 dark:bg-amber-900/40 rounded-2xl flex items-center justify-center mx-auto mb-2 text-3xl font-black shadow-md cursor-pointer">
+          😀
         </div>
-        <h3 class="text-lg font-black text-slate-900 dark:text-white">쌉싸오톡 입장</h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">대화방에서 사용할 본인의 이름을 입력해 주세요.</p>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">프로필 설정</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">사용할 이름과 프로필 이모티콘을 선택하세요.</p>
       </div>
+
+      <!-- 이모티콘 선택 팔레트 -->
       <div>
-        <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1.5">사용할 이름 (닉네임)</label>
+        <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1.5">프로필 이모티콘 선택</label>
+        <div id="emojiPickerGrid" class="grid grid-cols-7 gap-1.5 bg-slate-100 dark:bg-slate-800 p-2.5 rounded-2xl max-h-36 overflow-y-auto no-scrollbar border border-slate-200 dark:border-slate-700">
+          <!-- JS로 동적 생성 -->
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">사용할 이름 (닉네임)</label>
         <input type="search" id="nameInput" placeholder="" onkeypress="if(event.key==='Enter') saveProfile()"
           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_user_nickname_field"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white">
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
       </div>
-      <div class="flex gap-2">
-        <button onclick="saveProfile()" class="flex-1 py-3.5 bg-amber-400 hover:bg-amber-500 text-slate-900 font-black rounded-xl text-sm transition shadow-lg">시작하기</button>
+      <div class="flex gap-2 pt-1">
+        <button onclick="saveProfile()" class="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-black rounded-xl text-sm transition shadow-md">저장하기</button>
       </div>
     </div>
   </div>
@@ -531,7 +541,7 @@
     const db = firebase.database();
     
     window.userName = '';
-    window.userAvatarEmoji = '';
+    window.userAvatarEmoji = '😀';
     
     const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('maxTouchPoints' in navigator && navigator.maxTouchPoints > 0);
 
@@ -544,7 +554,7 @@
     window.currentTab = 'friends';
     window.currentRoomId = null;
 
-    const faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '👻', '🤖'];
+    const faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '👻', '🤖', '집사', '🐱', '🐶', '🦊', '🦁', '이모티콘', '🍎', '🍕', '🚗', '⚽', '🎸', '🔥', '⭐'];
 
     window.getUserAvatar = function(name, allUserNames = []) {
       if (!name) return { emoji: '😀' };
@@ -577,9 +587,12 @@
       const savedName = localStorage.getItem('ssapsao_userName');
       const savedEmoji = localStorage.getItem('ssapsao_userEmoji');
 
+      // 이모티콘 선택 그리드 생성
+      renderEmojiPicker();
+
       if (savedName) {
         window.userName = savedName;
-        window.userAvatarEmoji = savedEmoji || faceEmojis[Math.floor(Math.random() * faceEmojis.length)];
+        window.userAvatarEmoji = savedEmoji || '😀';
         document.getElementById('profileModal').classList.add('hidden');
         initApp();
       } else {
@@ -608,8 +621,32 @@
       }
     });
 
+    function renderEmojiPicker() {
+      const grid = document.getElementById('emojiPickerGrid');
+      if (!grid) return;
+      let html = '';
+      faceEmojis.forEach(emoji => {
+        const isSelected = emoji === window.userAvatarEmoji;
+        html += `
+          <button type="button" onclick="selectProfileEmoji('${emoji}')" class="w-9 h-9 text-lg rounded-xl flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition ${isSelected ? 'bg-amber-400 dark:bg-amber-500 shadow-xs ring-2 ring-amber-500' : 'bg-white dark:bg-slate-900'}">
+            ${emoji}
+          </button>
+        `;
+      });
+      grid.innerHTML = html;
+      const preview = document.getElementById('selectedEmojiPreview');
+      if (preview) preview.textContent = window.userAvatarEmoji;
+    }
+
+    window.selectProfileEmoji = function(emoji) {
+      window.userAvatarEmoji = emoji;
+      renderEmojiPicker();
+    };
+
     window.openProfileModal = function() {
       document.getElementById('nameInput').value = window.userName || '';
+      window.userAvatarEmoji = window.userAvatarEmoji || '😀';
+      renderEmojiPicker();
       document.getElementById('profileModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('nameInput').focus(), 100);
     };
@@ -622,7 +659,6 @@
       }
       
       window.userName = name;
-      window.userAvatarEmoji = faceEmojis[Math.floor(Math.random() * faceEmojis.length)];
 
       localStorage.setItem('ssapsao_userName', window.userName);
       localStorage.setItem('ssapsao_userEmoji', window.userAvatarEmoji);
@@ -641,15 +677,10 @@
     function updateUserPresence() {
       if (!window.userName) return;
       const userRef = db.ref('kakao_chat_app/users/' + window.userName);
-      
-      // 온라인 상태 기록
       userRef.set({ name: window.userName, emoji: window.userAvatarEmoji, online: true });
-      
-      // 앱을 종료하거나 연결이 끊어지면 즉시 online 상태를 false로 변경
       userRef.onDisconnect().update({ online: false });
     }
 
-    // 브라우저 탭을 닫거나 이동할 때 즉시 오프라인 처리
     window.addEventListener('beforeunload', () => {
       if (window.userName) {
         db.ref('kakao_chat_app/users/' + window.userName).update({ online: false });
@@ -752,8 +783,6 @@
       users.forEach(u => {
         const emoji = u.emoji || window.getUserAvatar(u.name, allUserNames).emoji;
         const isMe = u.name === window.userName;
-        
-        // 서버에 저장된 online 값에 따라 즉시 표시
         const isOnline = !!u.online;
 
         let statusText = isOnline ? '온라인' : '오프라인';
