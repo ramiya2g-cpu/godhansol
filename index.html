@@ -242,7 +242,6 @@
             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_title_field"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
         </div>
-        <!-- 일반 사용자일 때만 비밀번호 설정 영역 노출 -->
         <div id="passwordSettingGroup">
           <div class="flex items-center gap-2 pt-1">
             <input type="checkbox" id="enableRoomPassword" onchange="toggleRoomPasswordInput()" class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
@@ -274,9 +273,10 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="authRoomNameText">비밀방에 입장하기 위해 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="password" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
-          autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_auth_pw_field"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center">
+        <!-- 숫자 키패드 유도 및 자동완성 방지 적용 -->
+        <input type="tel" pattern="[0-9]*" inputmode="numeric" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
+          autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_auth_pw_field"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center tracking-widest text-lg">
       </div>
       <div class="flex gap-2">
         <button onclick="submitRoomAuth()" class="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-black rounded-xl text-sm shadow-md">입장하기</button>
@@ -296,9 +296,10 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">관리자 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="password" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
-          autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_admin_pw_field"
-          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center">
+        <!-- 숫자 키패드 유도 및 자동완성 방지 적용 -->
+        <input type="tel" pattern="[0-9]*" inputmode="numeric" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
+          autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_admin_pw_field"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center tracking-widest text-lg">
       </div>
       <div class="flex gap-2">
         <button onclick="verifyAdminLogin()" class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-sm shadow-md">로그인</button>
@@ -513,12 +514,10 @@
     window.userName = '';
     window.userAvatarEmoji = '';
     
-    // 모바일 기기 여부 판별 (터치 지원 또는 모바일 UA 기반)
     const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('maxTouchPoints' in navigator && navigator.maxTouchPoints > 0);
 
-    // 모바일은 sessionStorage(앱을 끄거나 명시적 로그아웃 전까지 유지), PC는 메모리 변수(새로고침시 초기화)로 관리
     if (isMobileDevice) {
-      window.isAdminLoggedIn = sessionStorage.getItem('ssapsao_admin') === 'true';
+      window.isAdminLoggedIn = localStorage.getItem('ssapsao_admin') === 'true';
     } else {
       window.isAdminLoggedIn = false;
     }
@@ -564,7 +563,6 @@
         openProfileModal();
       }
 
-      // 모바일 관리자 로그인 상태였다면 아이콘 색상 하이라이트 반영
       if (window.isAdminLoggedIn) {
         const adminBtn = document.getElementById('adminNavBtn');
         if (adminBtn) adminBtn.classList.add('bg-red-100', 'text-red-600');
@@ -877,7 +875,7 @@
           if (res) {
             window.isAdminLoggedIn = false;
             if (isMobileDevice) {
-              sessionStorage.removeItem('ssapsao_admin');
+              localStorage.removeItem('ssapsao_admin');
             }
             showAlert('관리자 모드가 해제되었습니다.');
             db.ref('kakao_chat_app/rooms').once('value', snap => renderChatRooms(snap.val() || {}));
@@ -900,7 +898,7 @@
       if (pw === '7299') {
         window.isAdminLoggedIn = true;
         if (isMobileDevice) {
-          sessionStorage.setItem('ssapsao_admin', 'true');
+          localStorage.setItem('ssapsao_admin', 'true');
         }
         closeAdminLoginModal();
         showAlert('관리자로 로그인되었습니다. 채팅방 우측의 - 버튼으로 삭제할 수 있습니다.');
@@ -1042,6 +1040,7 @@
       if (!window.currentRoomId) return;
 
       const roomId = window.currentRoomId;
+
       sendSystemMessage(`${window.userName}님이 퇴장하셨습니다.`);
 
       db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
@@ -1051,7 +1050,7 @@
         activeRoomListener = null;
       }
       if (activeNoticeListener) {
-        db.ref(`kakao_chat_app/notices/${window.currentRoomId}`).off('value', activeNoticeListener);
+        db.ref(`kakao_chat_app/notices/${roomId}`).off('value', activeNoticeListener);
         activeNoticeListener = null;
       }
 
