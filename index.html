@@ -554,7 +554,7 @@
     window.currentTab = 'friends';
     window.currentRoomId = null;
 
-    const faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '👻', '🤖', '🐱', '🐶', '🦊', '🦁', '🔥', '⭐'];
+    const faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '👻', '🤖', '🐱', '🐶', '🦊', '🦁', '🔥', '⭐'];
 
     window.getUserAvatar = function(name, allUserNames = []) {
       if (!name) return { emoji: '😀' };
@@ -683,21 +683,6 @@
     window.addEventListener('beforeunload', () => {
       if (window.userName) {
         db.ref('kakao_chat_app/users/' + window.userName).update({ online: false });
-      }
-      // 채팅방에 접속 중 강제 종료 또는 새로고침 시 Firebase Server Disconnect로 퇴장 메시지 등록 예약
-      if (window.currentRoomId && window.userName) {
-        const now = new Date();
-        const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
-        
-        db.ref(`kakao_chat_app/messages/${window.currentRoomId}`).push({
-          id: Date.now() + Math.random(),
-          sender: 'system',
-          text: `${window.userName}님이 퇴장하셨습니다.`,
-          time: timeStr,
-          timestamp: Date.now(),
-          type: 'system'
-        });
-        db.ref(`kakao_chat_app/room_members/${window.currentRoomId}/${window.userName}`).remove();
       }
     });
 
@@ -1059,6 +1044,7 @@
     let activeRoomListener = null;
     let activeNoticeListener = null;
     let previousMsgCount = 0;
+    let currentDisconnectRef = null;
 
     window.enterRoom = function(roomId, roomName) {
       window.currentRoomId = roomId;
@@ -1087,6 +1073,20 @@
       const memberRef = db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`);
       memberRef.set(true);
       memberRef.onDisconnect().remove();
+
+      // Firebase 서버단에 직접 연결 끊김 예약 (모바일 앱 강제 종료, 새로고침 대응)
+      const now = new Date();
+      const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      currentDisconnectRef = db.ref(`kakao_chat_app/messages/${roomId}`).push();
+      currentDisconnectRef.onDisconnect().set({
+        id: Date.now() + Math.random(),
+        sender: 'system',
+        text: `${window.userName}님이 퇴장하셨습니다.`,
+        time: timeStr,
+        timestamp: Date.now(),
+        type: 'system'
+      });
 
       sendSystemMessage(`${window.userName}님이 입장하셨습니다.`);
 
@@ -1128,6 +1128,12 @@
       if (!window.currentRoomId) return;
 
       const roomId = window.currentRoomId;
+
+      // 정상 퇴장 시 연결 끊김 예약(onDisconnect) 취소
+      if (currentDisconnectRef) {
+        currentDisconnectRef.onDisconnect().cancel();
+        currentDisconnectRef = null;
+      }
 
       sendSystemMessage(`${window.userName}님이 퇴장하셨습니다.`, () => {
         db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
