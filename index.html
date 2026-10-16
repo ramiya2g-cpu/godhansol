@@ -145,7 +145,7 @@
 
         <div class="px-4 py-2 space-y-3 flex-1">
           <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">접속 중인 친구 (<span id="friendCount">0</span>)</span>
+            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">등록된 사용자 (<span id="friendCount">0</span>)</span>
           </div>
           <div id="friendListContainer" class="space-y-2"></div>
         </div>
@@ -388,6 +388,7 @@
 
   <script>
     let audioCtx = null;
+    window.allUsersData = {};
 
     function requestNotificationPermission() {
       if ("Notification" in window && Notification.permission !== "granted") {
@@ -551,6 +552,10 @@
         return { emoji: window.userAvatarEmoji || '😀' };
       }
       
+      if (window.allUsersData && window.allUsersData[name] && window.allUsersData[name].emoji) {
+        return { emoji: window.allUsersData[name].emoji };
+      }
+
       const otherNames = [...new Set(allUserNames.filter(n => n !== window.userName))].sort();
       let index = otherNames.indexOf(name);
       if (index === -1) index = 0;
@@ -665,6 +670,7 @@
     function setupRealtimeListeners() {
       db.ref('kakao_chat_app/users').on('value', snapshot => {
         const users = snapshot.val() || {};
+        window.allUsersData = users;
         renderFriends(users);
       });
 
@@ -733,14 +739,42 @@
       
       countEl.textContent = users.length;
       if (users.length === 0) {
-        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs font-bold">접속 중인 사용자가 없습니다.</div>`;
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs font-bold">등록된 사용자가 없습니다.</div>`;
         return;
       }
 
       let html = '';
+      const now = Date.now();
+
       users.forEach(u => {
         const emoji = u.emoji || window.getUserAvatar(u.name, allUserNames).emoji;
         const isMe = u.name === window.userName;
+        
+        // 마지막 활동 시간 기준 온라인/오프라인 판정 (30초 이내면 온라인)
+        const diffSec = u.lastActive ? Math.floor((now - u.lastActive) / 1000) : 9999;
+        const isOnline = diffSec <= 30;
+
+        let statusText = '오프라인';
+        let statusDotColor = 'bg-slate-400';
+        let statusTextColor = 'text-slate-400';
+
+        if (isOnline) {
+          statusText = '온라인';
+          statusDotColor = 'bg-emerald-500 animate-pulse';
+          statusTextColor = 'text-emerald-600';
+        } else if (diffSec < 60) {
+          statusText = '방금 전 다녀감';
+        } else if (diffSec < 3600) {
+          const mins = Math.floor(diffSec / 60);
+          statusText = `${mins}분 전 다녀감`;
+        } else if (diffSec < 86400) {
+          const hours = Math.floor(diffSec / 3600);
+          statusText = `${hours}시간 전 다녀감`;
+        } else {
+          const days = Math.floor(diffSec / 86400);
+          statusText = `${days}일 전 다녀감`;
+        }
+
         html += `
           <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
             <div class="flex items-center gap-3">
@@ -751,8 +785,8 @@
                 <div class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                   ${u.name} ${isMe ? '<span class="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md">나</span>' : ''}
                 </div>
-                <div class="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 온라인
+                <div class="text-[11px] ${statusTextColor} font-medium flex items-center gap-1 mt-0.5">
+                  <span class="w-2 h-2 rounded-full ${statusDotColor}"></span> ${statusText}
                 </div>
               </div>
             </div>
@@ -1003,7 +1037,6 @@
       window.currentRoomName = roomName;
       previousMsgCount = 0;
 
-      // 입장 시 효과음 재생
       playBeepSound();
 
       document.getElementById('mainHeader').classList.add('hidden');
