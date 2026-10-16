@@ -249,8 +249,8 @@
           </div>
           <div id="roomPasswordContainer" class="hidden mt-2">
             <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">채팅방 비밀번호</label>
-            <input type="password" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
-              autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_pw_field"
+            <input type="password" inputmode="numeric" pattern="[0-9]*" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
+              autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_pw_field"
               class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
           </div>
         </div>
@@ -273,7 +273,7 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="authRoomNameText">비밀방에 입장하기 위해 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="tel" pattern="[0-9]*" inputmode="numeric" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
+        <input type="password" inputmode="numeric" pattern="[0-9]*" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
           autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_auth_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center tracking-widest text-lg">
       </div>
@@ -295,7 +295,7 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">관리자 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="tel" pattern="[0-9]*" inputmode="numeric" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
+        <input type="password" inputmode="numeric" pattern="[0-9]*" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
           autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_admin_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center tracking-widest text-lg">
       </div>
@@ -388,6 +388,28 @@
 
   <script>
     let audioCtx = null;
+
+    // 모바일 브라우저 알림 권한 요청
+    function requestNotificationPermission() {
+      if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
+    }
+
+    // 모바일 푸시/기기 알림 발송 함수
+    function sendPushNotification(title, body) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification(title, {
+            body: body,
+            icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png'
+          });
+        } catch (e) {
+          console.log('Notification send failed:', e);
+        }
+      }
+    }
+
     function playBeepSound() {
       try {
         if (!audioCtx) {
@@ -614,6 +636,7 @@
       updateUserPresence();
       setupRealtimeListeners();
       switchTab(window.currentTab || 'friends');
+      requestNotificationPermission(); // 알림 권한 요청
     }
 
     function updateUserPresence() {
@@ -982,6 +1005,9 @@
       window.currentRoomName = roomName;
       previousMsgCount = 0;
 
+      // 입장 시 효과음 재생
+      playBeepSound();
+
       document.getElementById('mainHeader').classList.add('hidden');
       document.getElementById('bottomNav').classList.add('hidden');
       document.getElementById('tabFriends').classList.add('hidden');
@@ -1012,6 +1038,12 @@
         
         if (previousMsgCount > 0 && msgList.length > previousMsgCount) {
           playBeepSound();
+          
+          // 새로 도착한 메시지가 다른 사람이 보낸 메시지라면 스마트폰 알림 팝업 발송
+          const latestMsg = msgList[msgList.length - 1];
+          if (latestMsg && latestMsg.sender !== window.userName && latestMsg.type !== 'system') {
+            sendPushNotification(`${latestMsg.sender} (${roomName})`, latestMsg.text);
+          }
         }
         previousMsgCount = msgList.length;
 
@@ -1039,12 +1071,10 @@
 
       const roomId = window.currentRoomId;
 
-      // 1. 퇴장 메시지 Firebase 전송 후 처리
+      // 1. 퇴장 메시지 저장 완료 후 퇴장 처리
       sendSystemMessage(`${window.userName}님이 퇴장하셨습니다.`, () => {
-        // 2. 멤버 목록에서 삭제
         db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
 
-        // 3. 잠시 후(150ms) 이벤트 리스너 해제 및 화면 전환
         setTimeout(() => {
           if (activeRoomListener) {
             db.ref(`kakao_chat_app/messages/${roomId}`).off('value', activeRoomListener);
@@ -1063,12 +1093,15 @@
           document.getElementById('roomView').classList.add('hidden');
 
           switchTab('chats');
-        }, 150);
+        }, 100);
       });
     };
 
     function sendSystemMessage(text, callback) {
-      if (!window.currentRoomId) return;
+      if (!window.currentRoomId) {
+        if (callback) callback();
+        return;
+      }
       const now = new Date();
       const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
       
@@ -1080,9 +1113,7 @@
         time: timeStr,
         timestamp: Date.now(),
         type: 'system'
-      }).then(() => {
-        if (callback) callback();
-      }).catch(() => {
+      }, (error) => {
         if (callback) callback();
       });
     }
