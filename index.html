@@ -179,9 +179,9 @@
         <main class="flex-1 px-3 py-3 overflow-y-auto space-y-3 no-scrollbar flex flex-col" id="chatContainer"></main>
         
         <footer class="bg-white dark:bg-slate-950 px-3 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0">
-          <!-- 자동완성/키보드 툴바 노출 방지 속성 적용 -->
-          <input type="text" id="messageInput" placeholder="" onkeypress="if(event.key==='Enter') sendMessage()"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"
+          <!-- 키보드 추천바 방지를 위해 search 타입 및 무작위 속성 부여 -->
+          <input type="search" id="messageInput" placeholder="" onkeypress="if(event.key==='Enter') sendMessage()"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_chat_msg_input_field"
             class="flex-1 bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-amber-400 rounded-xl px-4 py-2.5 text-sm font-medium outline-none transition text-slate-900 dark:text-white">
           <button onclick="sendMessage()" id="sendBtn" class="w-10 h-10 bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-900 rounded-xl transition flex items-center justify-center font-black shadow-sm shrink-0">
             <i class="fa-solid fa-paper-plane text-sm"></i>
@@ -217,8 +217,8 @@
       </div>
       <div>
         <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1.5">사용할 이름 (닉네임)</label>
-        <input type="text" id="nameInput" placeholder="" onkeypress="if(event.key==='Enter') saveProfile()"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"
+        <input type="search" id="nameInput" placeholder="" onkeypress="if(event.key==='Enter') saveProfile()"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_user_nickname_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white">
       </div>
       <div class="flex gap-2">
@@ -239,8 +239,8 @@
       <div class="space-y-3">
         <div>
           <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">채팅방 이름</label>
-          <input type="text" id="newRoomNameInput" placeholder="" onkeypress="if(event.key==='Enter') createNewRoom()"
-            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"
+          <input type="search" id="newRoomNameInput" placeholder="" onkeypress="if(event.key==='Enter') createNewRoom()"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_title_field"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
         </div>
         <div class="flex items-center gap-2 pt-1">
@@ -249,8 +249,8 @@
         </div>
         <div id="roomPasswordContainer" class="hidden">
           <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">채팅방 비밀번호</label>
-          <input type="password" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
-            autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"
+          <input type="search" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_pw_field"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
         </div>
       </div>
@@ -272,8 +272,8 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="authRoomNameText">비밀방에 입장하기 위해 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="password" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
-          autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"
+        <input type="search" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_auth_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center">
       </div>
       <div class="flex gap-2">
@@ -293,8 +293,8 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">관리자 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <input type="password" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
-          autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"
+        <input type="search" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_admin_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center">
       </div>
       <div class="flex gap-2">
@@ -539,7 +539,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      // 1. localStorage에서 저장된 사용자 이름 및 이모티콘 불러오기
       const savedName = localStorage.getItem('ssapsao_userName');
       const savedEmoji = localStorage.getItem('ssapsao_userEmoji');
 
@@ -589,7 +588,6 @@
       window.userName = name;
       window.userAvatarEmoji = faceEmojis[Math.floor(Math.random() * faceEmojis.length)];
 
-      // localStorage에 아이디 저장
       localStorage.setItem('ssapsao_userName', window.userName);
       localStorage.setItem('ssapsao_userEmoji', window.userAvatarEmoji);
 
@@ -731,7 +729,7 @@
 
         html += `
           <div class="group relative flex items-center justify-between px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
-            <div onclick="attemptEnterRoom('${room.id}', '${room.name}', ${hasPassword}) " class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+            <div onclick="attemptEnterRoom('${room.id}', '${room.name}', ${hasPassword})" class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
               <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-slate-900 flex items-center justify-center font-black text-2xl shadow-inner shrink-0">
                 ${roomEmoji}
               </div>
@@ -787,7 +785,6 @@
       });
     }
 
-    // 2. 비밀번호 확인 모달 및 로직
     let pendingRoomAuth = null;
     window.attemptEnterRoom = function(roomId, roomName, hasPassword) {
       if (hasPassword && !window.isAdminLoggedIn) {
