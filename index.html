@@ -242,15 +242,18 @@
             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_title_field"
             class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
         </div>
-        <div class="flex items-center gap-2 pt-1">
-          <input type="checkbox" id="enableRoomPassword" onchange="toggleRoomPasswordInput()" class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
-          <label for="enableRoomPassword" class="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">비밀번호 설정</label>
-        </div>
-        <div id="roomPasswordContainer" class="hidden">
-          <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">채팅방 비밀번호</label>
-          <input type="password" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
-            autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_pw_field"
-            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
+        <!-- 일반 사용자일 때만 비밀번호 설정 영역 노출 -->
+        <div id="passwordSettingGroup">
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="enableRoomPassword" onchange="toggleRoomPasswordInput()" class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+            <label for="enableRoomPassword" class="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">비밀번호 설정</label>
+          </div>
+          <div id="roomPasswordContainer" class="hidden mt-2">
+            <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">채팅방 비밀번호</label>
+            <input type="password" id="newRoomPasswordInput" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') createNewRoom()"
+              autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_room_pw_field"
+              class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none text-slate-900 dark:text-white">
+          </div>
         </div>
       </div>
       <div class="flex gap-2 pt-2">
@@ -601,7 +604,6 @@
       switchTab(window.currentTab || 'friends');
     }
 
-    // 사용자 접속 상태 및 주기적 갱신(하트비트) 처리 함수
     function updateUserPresence() {
       if (!window.userName) return;
       const userRef = db.ref('kakao_chat_app/users/' + window.userName);
@@ -609,7 +611,6 @@
       userRef.onDisconnect().remove();
     }
 
-    // 모바일 홈 버튼 등으로 앱이 백그라운드에 갔다가 다시 돌아올 때 접속 상태 즉시 갱신
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && window.userName) {
         updateUserPresence();
@@ -622,7 +623,6 @@
       }
     });
 
-    // 10초마다 주기적으로 서버에 생존 신고 (하트비트)
     setInterval(() => {
       if (window.userName && document.visibilityState === 'visible') {
         db.ref('kakao_chat_app/users/' + window.userName + '/lastActive').set(Date.now());
@@ -878,7 +878,7 @@
 
     window.verifyAdminLogin = function() {
       const pw = document.getElementById('adminPasswordInput').value;
-      if (pw === 'rhksflwksla') {
+      if (pw === '7299') {
         window.isAdminLoggedIn = true;
         closeAdminLoginModal();
         showAlert('관리자로 로그인되었습니다. 채팅방 우측의 - 버튼으로 삭제할 수 있습니다.');
@@ -894,6 +894,15 @@
       document.getElementById('newRoomPasswordInput').value = '';
       document.getElementById('enableRoomPassword').checked = false;
       document.getElementById('roomPasswordContainer').classList.add('hidden');
+      
+      // 관리자 모드일 때는 비밀번호 설정 영역 숨김 처리
+      const pwSettingGroup = document.getElementById('passwordSettingGroup');
+      if (window.isAdminLoggedIn) {
+        pwSettingGroup.classList.add('hidden');
+      } else {
+        pwSettingGroup.classList.remove('hidden');
+      }
+
       document.getElementById('createRoomModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('newRoomNameInput').focus(), 100);
     };
@@ -909,12 +918,17 @@
         return;
       }
 
-      const hasPassword = document.getElementById('enableRoomPassword').checked;
-      const passwordVal = document.getElementById('newRoomPasswordInput').value.trim();
+      let hasPassword = false;
+      let passwordVal = '';
 
-      if (hasPassword && !passwordVal) {
-        showAlert('채팅방 비밀번호를 입력해 주세요.');
-        return;
+      if (!window.isAdminLoggedIn) {
+        hasPassword = document.getElementById('enableRoomPassword').checked;
+        passwordVal = document.getElementById('newRoomPasswordInput').value.trim();
+
+        if (hasPassword && !passwordVal) {
+          showAlert('채팅방 비밀번호를 입력해 주세요.');
+          return;
+        }
       }
 
       const roomsRef = db.ref('kakao_chat_app/rooms');
