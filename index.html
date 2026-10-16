@@ -512,7 +512,17 @@
     
     window.userName = '';
     window.userAvatarEmoji = '';
-    window.isAdminLoggedIn = false;
+    
+    // 모바일 기기 여부 판별 (터치 지원 또는 모바일 UA 기반)
+    const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('maxTouchPoints' in navigator && navigator.maxTouchPoints > 0);
+
+    // 모바일은 sessionStorage(앱을 끄거나 명시적 로그아웃 전까지 유지), PC는 메모리 변수(새로고침시 초기화)로 관리
+    if (isMobileDevice) {
+      window.isAdminLoggedIn = sessionStorage.getItem('ssapsao_admin') === 'true';
+    } else {
+      window.isAdminLoggedIn = false;
+    }
+
     window.currentTab = 'friends';
     window.currentRoomId = null;
 
@@ -552,6 +562,12 @@
         initApp();
       } else {
         openProfileModal();
+      }
+
+      // 모바일 관리자 로그인 상태였다면 아이콘 색상 하이라이트 반영
+      if (window.isAdminLoggedIn) {
+        const adminBtn = document.getElementById('adminNavBtn');
+        if (adminBtn) adminBtn.classList.add('bg-red-100', 'text-red-600');
       }
 
       if (window.visualViewport) {
@@ -860,6 +876,9 @@
         showCustomConfirm('관리자 모드를 로그아웃 하시겠습니까?', (res) => {
           if (res) {
             window.isAdminLoggedIn = false;
+            if (isMobileDevice) {
+              sessionStorage.removeItem('ssapsao_admin');
+            }
             showAlert('관리자 모드가 해제되었습니다.');
             db.ref('kakao_chat_app/rooms').once('value', snap => renderChatRooms(snap.val() || {}));
             document.getElementById('adminNavBtn').classList.remove('bg-red-100', 'text-red-600');
@@ -880,6 +899,9 @@
       const pw = document.getElementById('adminPasswordInput').value;
       if (pw === '7299') {
         window.isAdminLoggedIn = true;
+        if (isMobileDevice) {
+          sessionStorage.setItem('ssapsao_admin', 'true');
+        }
         closeAdminLoginModal();
         showAlert('관리자로 로그인되었습니다. 채팅방 우측의 - 버튼으로 삭제할 수 있습니다.');
         document.getElementById('adminNavBtn').classList.add('bg-red-100', 'text-red-600');
@@ -895,7 +917,6 @@
       document.getElementById('enableRoomPassword').checked = false;
       document.getElementById('roomPasswordContainer').classList.add('hidden');
       
-      // 관리자 모드일 때는 비밀번호 설정 영역 숨김 처리
       const pwSettingGroup = document.getElementById('passwordSettingGroup');
       if (window.isAdminLoggedIn) {
         pwSettingGroup.classList.add('hidden');
