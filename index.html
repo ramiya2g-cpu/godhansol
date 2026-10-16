@@ -641,27 +641,36 @@
     function updateUserPresence() {
       if (!window.userName) return;
       const userRef = db.ref('kakao_chat_app/users/' + window.userName);
-      // 기존에 존재하던 onDisconnect().remove()를 제거하여 앱을 나가도 데이터가 지워지지 않고 남아있게 합니다.
-      userRef.set({ name: window.userName, emoji: window.userAvatarEmoji, lastActive: Date.now() });
+      
+      // 온라인 상태 기록
+      userRef.set({ name: window.userName, emoji: window.userAvatarEmoji, online: true });
+      
+      // 앱을 종료하거나 연결이 끊어지면 즉시 online 상태를 false로 변경
+      userRef.onDisconnect().update({ online: false });
     }
 
+    // 브라우저 탭을 닫거나 이동할 때 즉시 오프라인 처리
+    window.addEventListener('beforeunload', () => {
+      if (window.userName) {
+        db.ref('kakao_chat_app/users/' + window.userName).update({ online: false });
+      }
+    });
+
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && window.userName) {
-        updateUserPresence();
+      if (window.userName) {
+        if (document.visibilityState === 'visible') {
+          db.ref('kakao_chat_app/users/' + window.userName).update({ online: true });
+        } else {
+          db.ref('kakao_chat_app/users/' + window.userName).update({ online: false });
+        }
       }
     });
 
     window.addEventListener('pageshow', (event) => {
-      if (event.persisted && window.userName) {
-        updateUserPresence();
+      if (window.userName) {
+        db.ref('kakao_chat_app/users/' + window.userName).update({ online: true });
       }
     });
-
-    setInterval(() => {
-      if (window.userName && document.visibilityState === 'visible') {
-        db.ref('kakao_chat_app/users/' + window.userName + '/lastActive').set(Date.now());
-      }
-    }, 10000);
 
     function setupRealtimeListeners() {
       db.ref('kakao_chat_app/users').on('value', snapshot => {
@@ -740,36 +749,16 @@
       }
 
       let html = '';
-      const now = Date.now();
-
       users.forEach(u => {
         const emoji = u.emoji || window.getUserAvatar(u.name, allUserNames).emoji;
         const isMe = u.name === window.userName;
         
-        // 30초 이내 활동이 있으면 온라인, 아니면 오프라인 처리
-        const diffSec = u.lastActive ? Math.floor((now - u.lastActive) / 1000) : 99999;
-        const isOnline = diffSec <= 30;
+        // 서버에 저장된 online 값에 따라 즉시 표시
+        const isOnline = !!u.online;
 
-        let statusText = '오프라인';
-        let statusDotColor = 'bg-slate-400';
-        let statusTextColor = 'text-slate-400';
-
-        if (isOnline) {
-          statusText = '온라인';
-          statusDotColor = 'bg-emerald-500 animate-pulse';
-          statusTextColor = 'text-emerald-600';
-        } else if (diffSec < 60) {
-          statusText = '방금 전 오프라인';
-        } else if (diffSec < 3600) {
-          const mins = Math.floor(diffSec / 60);
-          statusText = `${mins}분 전 오프라인`;
-        } else if (diffSec < 86400) {
-          const hours = Math.floor(diffSec / 3600);
-          statusText = `${hours}시간 전 오프라인`;
-        } else {
-          const days = Math.floor(diffSec / 86400);
-          statusText = `${days}일 전 오프라인`;
-        }
+        let statusText = isOnline ? '온라인' : '오프라인';
+        let statusDotColor = isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400';
+        let statusTextColor = isOnline ? 'text-emerald-600' : 'text-slate-400';
 
         html += `
           <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
