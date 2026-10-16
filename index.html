@@ -273,7 +273,6 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="authRoomNameText">비밀방에 입장하기 위해 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <!-- 숫자 키패드 유도 및 자동완성 방지 적용 -->
         <input type="tel" pattern="[0-9]*" inputmode="numeric" id="roomAuthPasswordInput" placeholder="비밀번호" onkeypress="if(event.key==='Enter') submitRoomAuth()"
           autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_auth_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center tracking-widest text-lg">
@@ -296,7 +295,6 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">관리자 비밀번호를 입력하세요.</p>
       </div>
       <div>
-        <!-- 숫자 키패드 유도 및 자동완성 방지 적용 -->
         <input type="tel" pattern="[0-9]*" inputmode="numeric" id="adminPasswordInput" placeholder="" onkeypress="if(event.key==='Enter') verifyAdminLogin()"
           autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_admin_pw_field"
           class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold outline-none text-slate-900 dark:text-white text-center tracking-widest text-lg">
@@ -810,7 +808,7 @@
               let validMsg = '채팅방에 참여해보세요!';
               for (let i = msgs.length - 1; i >= 0; i--) {
                 const m = msgs[i];
-                if (m && m.text && m.type !== 'system' && !m.text.includes('입장') && !m.text.includes('퇴장')) {
+                if (m && m.text && m.type !== 'system') {
                   validMsg = m.text;
                   break;
                 }
@@ -1041,41 +1039,51 @@
 
       const roomId = window.currentRoomId;
 
-      sendSystemMessage(`${window.userName}님이 퇴장하셨습니다.`);
+      // 1. 퇴장 메시지 Firebase 전송 후 처리
+      sendSystemMessage(`${window.userName}님이 퇴장하셨습니다.`, () => {
+        // 2. 멤버 목록에서 삭제
+        db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
 
-      db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
+        // 3. 잠시 후(150ms) 이벤트 리스너 해제 및 화면 전환
+        setTimeout(() => {
+          if (activeRoomListener) {
+            db.ref(`kakao_chat_app/messages/${roomId}`).off('value', activeRoomListener);
+            activeRoomListener = null;
+          }
+          if (activeNoticeListener) {
+            db.ref(`kakao_chat_app/notices/${roomId}`).off('value', activeNoticeListener);
+            activeNoticeListener = null;
+          }
 
-      if (activeRoomListener) {
-        db.ref(`kakao_chat_app/messages/${roomId}`).off('value', activeRoomListener);
-        activeRoomListener = null;
-      }
-      if (activeNoticeListener) {
-        db.ref(`kakao_chat_app/notices/${roomId}`).off('value', activeNoticeListener);
-        activeNoticeListener = null;
-      }
+          window.currentRoomId = null;
+          document.getElementById('roomHeader').classList.add('hidden');
+          document.getElementById('roomHeader').classList.remove('flex');
+          document.getElementById('roomNoticeBanner').classList.add('hidden');
+          document.getElementById('roomNoticeBanner').classList.remove('flex');
+          document.getElementById('roomView').classList.add('hidden');
 
-      window.currentRoomId = null;
-      document.getElementById('roomHeader').classList.add('hidden');
-      document.getElementById('roomHeader').classList.remove('flex');
-      document.getElementById('roomNoticeBanner').classList.add('hidden');
-      document.getElementById('roomNoticeBanner').classList.remove('flex');
-      document.getElementById('roomView').classList.add('hidden');
-
-      switchTab('chats');
+          switchTab('chats');
+        }, 150);
+      });
     };
 
-    function sendSystemMessage(text) {
+    function sendSystemMessage(text, callback) {
       if (!window.currentRoomId) return;
       const now = new Date();
       const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
       
-      db.ref(`kakao_chat_app/messages/${window.currentRoomId}`).push({
+      const newRef = db.ref(`kakao_chat_app/messages/${window.currentRoomId}`).push();
+      newRef.set({
         id: Date.now() + Math.random(),
         sender: 'system',
         text: text,
         time: timeStr,
         timestamp: Date.now(),
         type: 'system'
+      }).then(() => {
+        if (callback) callback();
+      }).catch(() => {
+        if (callback) callback();
       });
     }
 
