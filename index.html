@@ -1,17 +1,3 @@
-네, 말씀하신 상황을 정확히 이해했습니다!
-
-기존에는 **닉네임(이름) 자체가 고유 식별자(ID) 역할**을 하고 있어서, 이름을 변경할 때마다 Firebase 데이터베이스에 새 사용자로 등록되어 친구 목록에 이전 이름과 새 이름이 중복으로 계속 누적되는 문제가 있었습니다.
-
-### 💡 해결 방법
-
-1. **기기 고유 ID (`deviceId`) 부여**: 사용자 기기마다 변하지 않는 고유 식별값(`deviceId`)을 `localStorage`에 생성·저장합니다.
-2. **단일 기록 유지**: 이름을 `한솔`에서 `조한솔`로 변경하더라도, 기존 데이터를 삭제하거나 덮어써서 **하나의 기기에서는 언제나 단 1개의 사용자 기록만 존재**하도록 보완했습니다.
-
----
-
-### 📄 전체 소스 코드 (`index.html`)
-
-```html
 <!DOCTYPE html>
 <html lang="ko" class="light">
 <head>
@@ -362,6 +348,22 @@
     </div>
   </div>
 
+  <div id="deleteUserModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
+      <div class="text-center">
+        <div class="w-14 h-14 bg-red-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-white text-xl font-black shadow-md">
+          <i class="fa-solid fa-user-xmark"></i>
+        </div>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">친구 삭제</h3>
+        <p class="text-sm font-bold text-slate-700 dark:text-slate-300 mt-2" id="deleteUserPromptText">정말 삭제하시겠습니까?</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="confirmDeleteUserAction()" class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-sm shadow-md">확인</button>
+        <button onclick="closeDeleteUserModal()" class="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm">취소</button>
+      </div>
+    </div>
+  </div>
+
   <div id="deleteMessageModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
       <div class="text-center">
@@ -511,6 +513,24 @@
         showAlert('채팅방이 삭제되었습니다.');
       }
       closeDeleteRoomModal();
+    }
+
+    let targetDeleteUserKey = null;
+    function promptDeleteUser(userKey, userName) {
+      targetDeleteUserKey = userKey;
+      document.getElementById('deleteUserPromptText').textContent = `[${userName}] 님을 친구 목록에서 정말 삭제하시겠습니까?`;
+      document.getElementById('deleteUserModal').classList.remove('hidden');
+    }
+    function closeDeleteUserModal() {
+      document.getElementById('deleteUserModal').classList.add('hidden');
+      targetDeleteUserKey = null;
+    }
+    function confirmDeleteUserAction() {
+      if (targetDeleteUserKey) {
+        db.ref(`kakao_chat_app/users/${targetDeleteUserKey}`).remove();
+        showAlert('친구 삭제가 완료되었습니다.');
+      }
+      closeDeleteUserModal();
     }
 
     let targetDeleteMessageKey = null;
@@ -686,7 +706,6 @@
       localStorage.setItem('ssapsao_userName', window.userName);
       localStorage.setItem('ssapsao_userEmoji', window.userAvatarEmoji);
 
-      // 이름 변경 시 기존 이름으로 등록되어 있던 DB 항목 정리 및 갱신
       if (oldName && oldName !== name) {
         db.ref('kakao_chat_app/users/' + oldName).remove();
       }
@@ -704,7 +723,6 @@
 
     function updateUserPresence() {
       if (!window.userName || !window.deviceId) return;
-      // deviceId를 키 값으로 사용하여 기기당 단 1개의 고유 데이터만 보장
       const userRef = db.ref('kakao_chat_app/users/' + window.deviceId);
       userRef.set({ deviceId: window.deviceId, name: window.userName, emoji: window.userAvatarEmoji, online: true });
       userRef.onDisconnect().update({ online: false });
@@ -799,17 +817,17 @@
     function renderFriends(usersObj) {
       const container = document.getElementById('friendListContainer');
       const countEl = document.getElementById('friendCount');
-      const users = Object.values(usersObj);
-      const allUserNames = users.map(u => u.name);
+      const userEntries = Object.entries(usersObj);
+      const allUserNames = userEntries.map(([_, u]) => u.name);
       
-      countEl.textContent = users.length;
-      if (users.length === 0) {
+      countEl.textContent = userEntries.length;
+      if (userEntries.length === 0) {
         container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs font-bold">등록된 사용자가 없습니다.</div>`;
         return;
       }
 
       let html = '';
-      users.forEach(u => {
+      userEntries.forEach(([key, u]) => {
         const emoji = u.emoji || window.getUserAvatar(u.name, allUserNames).emoji;
         const isMe = u.deviceId === window.deviceId || u.name === window.userName;
         const isOnline = !!u.online;
@@ -819,20 +837,25 @@
         let statusTextColor = isOnline ? 'text-emerald-600' : 'text-slate-400';
 
         html += `
-          <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-            <div class="flex items-center gap-3">
+          <div class="group relative flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
               <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-slate-900 flex items-center justify-center font-black text-2xl shadow-inner shrink-0">
                 ${emoji}
               </div>
-              <div>
-                <div class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                  ${u.name} ${isMe ? '<span class="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md">나</span>' : ''}
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                  ${u.name} ${isMe ? '<span class="text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-md shrink-0">나</span>' : ''}
                 </div>
                 <div class="text-[11px] ${statusTextColor} font-medium flex items-center gap-1 mt-0.5">
                   <span class="w-2 h-2 rounded-full ${statusDotColor}"></span> ${statusText}
                 </div>
               </div>
             </div>
+            ${window.isAdminLoggedIn ? `
+              <button onclick="promptDeleteUser('${key}', '${u.name}')" title="친구 삭제" class="w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition shrink-0 ml-2">
+                <i class="fa-solid fa-minus text-xs"></i>
+              </button>
+            ` : ''}
           </div>
         `;
       });
@@ -975,6 +998,7 @@
             }
             showAlert('관리자 모드가 해제되었습니다.');
             db.ref('kakao_chat_app/rooms').once('value', snap => renderChatRooms(snap.val() || {}));
+            db.ref('kakao_chat_app/users').once('value', snap => renderFriends(snap.val() || {}));
             document.getElementById('adminNavBtn').classList.remove('bg-red-100', 'text-red-600');
           }
         });
@@ -997,9 +1021,10 @@
           localStorage.setItem('ssapsao_admin', 'true');
         }
         closeAdminLoginModal();
-        showAlert('관리자로 로그인되었습니다. 채팅방 우측의 - 버튼으로 삭제할 수 있습니다.');
+        showAlert('관리자로 로그인되었습니다. 친구 및 채팅방 우측의 - 버튼으로 삭제할 수 있습니다.');
         document.getElementById('adminNavBtn').classList.add('bg-red-100', 'text-red-600');
         db.ref('kakao_chat_app/rooms').once('value', snap => renderChatRooms(snap.val() || {}));
+        db.ref('kakao_chat_app/users').once('value', snap => renderFriends(snap.val() || {}));
       } else {
         showAlert('비밀번호가 틀렸습니다.');
       }
@@ -1104,7 +1129,7 @@
       memberRef.set(true);
       memberRef.onDisconnect().remove();
 
-      // Firebase 서버단에 직접 연결 끊김 예약 (모바일 앱 강제 종료, 새로고침 대응)
+      // Firebase 서버단에 직접 연결 끊김 예약
       const now = new Date();
       const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
       
@@ -1159,7 +1184,6 @@
 
       const roomId = window.currentRoomId;
 
-      // 정상 퇴장 시 연결 끊김 예약(onDisconnect) 취소
       if (currentDisconnectRef) {
         currentDisconnectRef.onDisconnect().cancel();
         currentDisconnectRef = null;
@@ -1330,5 +1354,3 @@
   </script>
 </body>
 </html>
-
-```
