@@ -1,3 +1,17 @@
+네, 말씀하신 상황을 정확히 이해했습니다!
+
+기존에는 **닉네임(이름) 자체가 고유 식별자(ID) 역할**을 하고 있어서, 이름을 변경할 때마다 Firebase 데이터베이스에 새 사용자로 등록되어 친구 목록에 이전 이름과 새 이름이 중복으로 계속 누적되는 문제가 있었습니다.
+
+### 💡 해결 방법
+
+1. **기기 고유 ID (`deviceId`) 부여**: 사용자 기기마다 변하지 않는 고유 식별값(`deviceId`)을 `localStorage`에 생성·저장합니다.
+2. **단일 기록 유지**: 이름을 `한솔`에서 `조한솔`로 변경하더라도, 기존 데이터를 삭제하거나 덮어써서 **하나의 기기에서는 언제나 단 1개의 사용자 기록만 존재**하도록 보완했습니다.
+
+---
+
+### 📄 전체 소스 코드 (`index.html`)
+
+```html
 <!DOCTYPE html>
 <html lang="ko" class="light">
 <head>
@@ -540,6 +554,14 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     
+    // 기기 고유 ID 생성 및 로드 (한 기기당 하나의 키 유지)
+    let deviceId = localStorage.getItem('ssapsao_deviceId');
+    if (!deviceId) {
+      deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      localStorage.setItem('ssapsao_deviceId', deviceId);
+    }
+    window.deviceId = deviceId;
+
     window.userName = '';
     window.userAvatarEmoji = '😀';
     
@@ -562,8 +584,9 @@
         return { emoji: window.userAvatarEmoji || '😀' };
       }
       
-      if (window.allUsersData && window.allUsersData[name] && window.allUsersData[name].emoji) {
-        return { emoji: window.allUsersData[name].emoji };
+      const foundUser = Object.values(window.allUsersData || {}).find(u => u.name === name);
+      if (foundUser && foundUser.emoji) {
+        return { emoji: foundUser.emoji };
       }
 
       const otherNames = [...new Set(allUserNames.filter(n => n !== window.userName))].sort();
@@ -657,10 +680,16 @@
         return;
       }
       
+      const oldName = window.userName;
       window.userName = name;
 
       localStorage.setItem('ssapsao_userName', window.userName);
       localStorage.setItem('ssapsao_userEmoji', window.userAvatarEmoji);
+
+      // 이름 변경 시 기존 이름으로 등록되어 있던 DB 항목 정리 및 갱신
+      if (oldName && oldName !== name) {
+        db.ref('kakao_chat_app/users/' + oldName).remove();
+      }
 
       document.getElementById('profileModal').classList.add('hidden');
       initApp();
@@ -674,31 +703,32 @@
     }
 
     function updateUserPresence() {
-      if (!window.userName) return;
-      const userRef = db.ref('kakao_chat_app/users/' + window.userName);
-      userRef.set({ name: window.userName, emoji: window.userAvatarEmoji, online: true });
+      if (!window.userName || !window.deviceId) return;
+      // deviceId를 키 값으로 사용하여 기기당 단 1개의 고유 데이터만 보장
+      const userRef = db.ref('kakao_chat_app/users/' + window.deviceId);
+      userRef.set({ deviceId: window.deviceId, name: window.userName, emoji: window.userAvatarEmoji, online: true });
       userRef.onDisconnect().update({ online: false });
     }
 
     window.addEventListener('beforeunload', () => {
-      if (window.userName) {
-        db.ref('kakao_chat_app/users/' + window.userName).update({ online: false });
+      if (window.deviceId) {
+        db.ref('kakao_chat_app/users/' + window.deviceId).update({ online: false });
       }
     });
 
     document.addEventListener('visibilitychange', () => {
-      if (window.userName) {
+      if (window.deviceId) {
         if (document.visibilityState === 'visible') {
-          db.ref('kakao_chat_app/users/' + window.userName).update({ online: true });
+          db.ref('kakao_chat_app/users/' + window.deviceId).update({ online: true });
         } else {
-          db.ref('kakao_chat_app/users/' + window.userName).update({ online: false });
+          db.ref('kakao_chat_app/users/' + window.deviceId).update({ online: false });
         }
       }
     });
 
     window.addEventListener('pageshow', (event) => {
-      if (window.userName) {
-        db.ref('kakao_chat_app/users/' + window.userName).update({ online: true });
+      if (window.deviceId) {
+        db.ref('kakao_chat_app/users/' + window.deviceId).update({ online: true });
       }
     });
 
@@ -781,7 +811,7 @@
       let html = '';
       users.forEach(u => {
         const emoji = u.emoji || window.getUserAvatar(u.name, allUserNames).emoji;
-        const isMe = u.name === window.userName;
+        const isMe = u.deviceId === window.deviceId || u.name === window.userName;
         const isOnline = !!u.online;
 
         let statusText = isOnline ? '온라인' : '오프라인';
@@ -1300,3 +1330,5 @@
   </script>
 </body>
 </html>
+
+```
