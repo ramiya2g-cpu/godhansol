@@ -438,10 +438,13 @@
     function sendPushNotification(title, body) {
       if ("Notification" in window && Notification.permission === "granted") {
         try {
-          new Notification(title, {
-            body: body,
-            icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png'
-          });
+          // 브라우저 포그라운드/백그라운드 상태에서 상단바 알림 배너 띄우기
+          if (document.hidden || !document.hasFocus()) {
+            new Notification(title, {
+              body: body,
+              icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png'
+            });
+          }
         } catch (e) {
           console.log('Notification send failed:', e);
         }
@@ -737,12 +740,12 @@
     function initApp() {
       updateUserPresence();
       setupRealtimeListeners();
-      setupGlobalNotifications(); // <-- 어디서든 새 메시지 알림이 오도록 전역 리스너 추가
+      setupGlobalNotifications();
       switchTab(window.currentTab || 'friends');
       requestNotificationPermission();
     }
 
-    // 전역 알림 처리 함수
+    // 전역 알림 처리 함수 (포그라운드 및 백그라운드 대기 상태 대응)
     function setupGlobalNotifications() {
       const appStartTime = Date.now();
 
@@ -863,7 +866,15 @@
     function renderFriends(usersObj) {
       const container = document.getElementById('friendListContainer');
       const countEl = document.getElementById('friendCount');
-      const userEntries = Object.entries(usersObj);
+      
+      if (!usersObj) {
+        countEl.textContent = 0;
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs font-bold">등록된 사용자가 없습니다.</div>`;
+        return;
+      }
+
+      // ★ undefined 및 빈 이름 데이터 필터링 처리
+      const userEntries = Object.entries(usersObj).filter(([_, u]) => u && u.name && u.name !== 'undefined');
       const allUserNames = userEntries.map(([_, u]) => u.name);
       
       countEl.textContent = userEntries.length;
