@@ -22,7 +22,6 @@
   <!-- Firebase App (v8 Compat) & Realtime Database -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -93,9 +92,6 @@
         <span class="text-[11px] font-bold text-slate-400">by 조한솔</span>
       </div>
       <div id="headerActions" class="flex items-center gap-2">
-        <button onclick="enablePushNotifications()" id="enableNotificationsBtn" title="새 메시지 알림 켜기" aria-label="새 메시지 알림 켜기" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 text-slate-700 dark:text-slate-200 flex items-center justify-center transition shadow-xs">
-          <i class="fa-solid fa-bell text-sm"></i>
-        </button>
         <button onclick="openAdminLoginModal()" id="adminNavBtn" title="관리자 로그인" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 flex items-center justify-center transition shadow-xs">
           <i class="fa-solid fa-shield-halved text-sm"></i>
         </button>
@@ -433,86 +429,20 @@
     let audioCtx = null;
     window.allUsersData = {};
 
-    // 서비스 워커 등록: FCM 백그라운드 푸시 수신에도 사용합니다.
-    let serviceWorkerRegistrationPromise = Promise.resolve(null);
+    function requestNotificationPermission() {
+      if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
+    }
+
+    // 서비스 워커 등록 처리
     if ('serviceWorker' in navigator) {
-      serviceWorkerRegistrationPromise = navigator.serviceWorker.register('/sw.js')
-        .then(reg => {
-          console.log('Service Worker Registered');
-          return reg;
-        })
-        .catch(err => {
-          console.error('Service Worker Register Failed', err);
-          return null;
-        });
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        console.log('Service Worker Registered');
+      }).catch(err => {
+        console.log('Service Worker Register Failed', err);
+      });
     }
-
-    function updatePushButtonState() {
-      const btn = document.getElementById('enableNotificationsBtn');
-      if (!btn) return;
-      if (!('Notification' in window)) {
-        btn.title = '이 브라우저는 웹 알림을 지원하지 않습니다';
-        btn.classList.add('opacity-50');
-        return;
-      }
-      if (Notification.permission === 'granted') {
-        btn.title = '새 메시지 알림 설정됨';
-        btn.classList.add('text-amber-600');
-      } else {
-        btn.title = '새 메시지 알림 켜기';
-      }
-    }
-
-    // 반드시 사용자가 알림 버튼을 직접 눌렀을 때 권한을 요청합니다.
-    window.enablePushNotifications = async function() {
-      if (!('Notification' in window) || !('serviceWorker' in navigator) || !messagingSupported) {
-        showAlert('이 브라우저에서는 푸시 알림을 지원하지 않습니다. 안드로이드 Chrome 최신 버전을 이용해주세요.');
-        return;
-      }
-
-      try {
-        const permission = Notification.permission === 'granted'
-          ? 'granted'
-          : await Notification.requestPermission();
-
-        if (permission !== 'granted') {
-          showAlert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 쌉싸오톡 알림을 허용해주세요.');
-          updatePushButtonState();
-          return;
-        }
-
-        const registration = await serviceWorkerRegistrationPromise || await navigator.serviceWorker.ready;
-        if (!registration) throw new Error('서비스 워커 등록에 실패했습니다.');
-
-        // Firebase Console > 프로젝트 설정 > 클라우드 메시징 > 웹 푸시 인증서의 공개 키를 입력하세요.
-        const vapidKey = 'YOUR_FIREBASE_VAPID_PUBLIC_KEY';
-        if (!vapidKey || vapidKey === 'YOUR_FIREBASE_VAPID_PUBLIC_KEY') {
-          showAlert('Firebase 웹 푸시 공개 키 설정이 아직 필요합니다. 안내 파일의 설정 단계를 먼저 완료해주세요.');
-          return;
-        }
-
-        const token = await firebase.messaging().getToken({
-          vapidKey,
-          serviceWorkerRegistration: registration
-        });
-
-        if (!token) throw new Error('푸시 토큰을 발급받지 못했습니다.');
-
-        await db.ref('kakao_chat_app/pushTokens/' + window.deviceId).set({
-          token,
-          deviceId: window.deviceId,
-          name: window.userName || '',
-          updatedAt: Date.now(),
-          platform: /Android/i.test(navigator.userAgent) ? 'android' : 'web'
-        });
-
-        updatePushButtonState();
-        showAlert('새 메시지 푸시 알림이 설정되었습니다.');
-      } catch (error) {
-        console.error('푸시 알림 설정 실패:', error);
-        showAlert('알림 설정에 실패했습니다. Firebase 설정과 브라우저 권한을 확인해주세요.');
-      }
-    };
 
     // 상단바 푸시 알림 발생 함수
     function sendPushNotification(title, body) {
@@ -684,8 +614,6 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    // Firebase Messaging은 브라우저에서 지원되는 경우에만 사용합니다.
-    const messagingSupported = firebase.messaging.isSupported();
     
     let deviceId = localStorage.getItem('ssapsao_deviceId');
     if (!deviceId) {
@@ -739,7 +667,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      updatePushButtonState();
       setTimeout(() => {
         const splash = document.getElementById('splashScreen');
         if (splash) {
@@ -840,7 +767,7 @@
       setupRealtimeListeners();
       setupGlobalNotifications();
       switchTab(window.currentTab || 'friends');
-      updatePushButtonState();
+      requestNotificationPermission();
     }
 
     // 전역 알림 처리 함수
@@ -856,7 +783,7 @@
             const m = msgSnap.val();
             if (!m) return;
 
-            if (m.timestamp > appStartTime && m.sender !== window.userName && m.type !== 'system' && document.visibilityState === 'visible') {
+            if (m.timestamp > appStartTime && m.sender !== window.userName && m.type !== 'system') {
               if (window.currentRoomId !== roomId) {
                 const roomName = rooms[roomId] ? rooms[roomId].name : '쌉싸오톡';
                 playBeepSound();
@@ -1304,7 +1231,7 @@
         const data = snapshot.val() || {};
         const msgList = Object.values(data);
         
-        if (previousMsgCount > 0 && msgList.length > previousMsgCount && document.visibilityState === 'visible') {
+        if (previousMsgCount > 0 && msgList.length > previousMsgCount) {
           playBeepSound();
           
           const latestMsg = msgList[msgList.length - 1];
@@ -1505,6 +1432,55 @@
     function escapeHtml(text) {
       return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
+
+
+    // 안드로이드 홈 화면 설치 앱(PWA)의 뒤로 가기 처리
+    // 채팅방 -> 채팅 목록 -> 친구 탭 순서로 이동합니다.
+    // 친구 탭에서 다시 뒤로 가면 기록을 다시 쌓지 않아 앱/브라우저의 기본 종료 동작에 맡깁니다.
+    // 웹페이지는 OS의 홈 버튼을 직접 누를 수 없으므로, 실제 홈 화면 이동은 Android/PWA 동작에 따릅니다.
+    (function setupAppBackButton() {
+      let handlingBack = false;
+
+      function addBackGuard() {
+        try {
+          history.pushState({ ssapsaoBackGuard: true }, '', location.href);
+        } catch (e) {
+          console.warn('뒤로 가기 처리를 설정하지 못했습니다.', e);
+        }
+      }
+
+      // 앱 첫 화면에 뒤로 가기 감지용 기록을 하나 둡니다.
+      addBackGuard();
+
+      window.addEventListener('popstate', function () {
+        if (handlingBack) return;
+        handlingBack = true;
+
+        const inRoom = !!window.currentRoomId;
+        const onChatsTab = window.currentTab === 'chats';
+
+        if (inRoom) {
+          // 채팅방에서 뒤로 가기: 기록을 복구한 다음 채팅 목록으로 이동합니다.
+          addBackGuard();
+          if (typeof window.leaveCurrentRoom === 'function') {
+            window.leaveCurrentRoom();
+          }
+        } else if (onChatsTab) {
+          // 채팅 목록에서 뒤로 가기: 기록을 복구한 다음 친구 탭으로 이동합니다.
+          addBackGuard();
+          if (typeof window.switchTab === 'function') {
+            window.switchTab('friends');
+          }
+        } else {
+          // 친구 탭에서는 기록을 다시 추가하지 않습니다.
+          // 브라우저/PWA가 기본 뒤로 가기 동작을 수행하게 두어 앱 종료/홈 화면 복귀를 시도합니다.
+          handlingBack = false;
+          return;
+        }
+
+        setTimeout(function () { handlingBack = false; }, 500);
+      });
+    })();
   </script>
 </body>
 </html>
