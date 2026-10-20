@@ -435,15 +435,40 @@
       }
     }
 
+    // 서비스 워커 등록 처리
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        console.log('Service Worker Registered');
+      }).catch(err => {
+        console.log('Service Worker Register Failed', err);
+      });
+    }
+
+    // 상단바 푸시 알림 발생 함수
     function sendPushNotification(title, body) {
       if ("Notification" in window && Notification.permission === "granted") {
         try {
-          // 브라우저 포그라운드/백그라운드 상태에서 상단바 알림 배너 띄우기
-          if (document.hidden || !document.hasFocus()) {
-            new Notification(title, {
-              body: body,
-              icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png'
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification(title, {
+                body: body,
+                icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png',
+                badge: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png',
+                tag: 'ssapsao-msg-' + Date.now(),
+                renotify: true
+              });
             });
+          } else {
+            const notification = new Notification(title, {
+              body: body,
+              icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png',
+              tag: 'ssapsao-msg-' + Date.now(),
+              renotify: true
+            });
+            notification.onclick = function() {
+              window.focus();
+              this.close();
+            };
           }
         } catch (e) {
           console.log('Notification send failed:', e);
@@ -745,7 +770,7 @@
       requestNotificationPermission();
     }
 
-    // 전역 알림 처리 함수 (포그라운드 및 백그라운드 대기 상태 대응)
+    // 전역 알림 처리 함수
     function setupGlobalNotifications() {
       const appStartTime = Date.now();
 
@@ -873,7 +898,7 @@
         return;
       }
 
-      // ★ undefined 및 빈 이름 데이터 필터링 처리
+      // undefined 및 빈 이름 데이터 필터링 처리
       const userEntries = Object.entries(usersObj).filter(([_, u]) => u && u.name && u.name !== 'undefined');
       const allUserNames = userEntries.map(([_, u]) => u.name);
       
