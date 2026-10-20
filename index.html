@@ -22,6 +22,7 @@
   <!-- Firebase App (v8 Compat) & Realtime Database -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -440,22 +441,57 @@
     let audioCtx = null;
     window.allUsersData = {};
 
-    function requestNotificationPermission() {
-      if ("Notification" in window && Notification.permission !== "granted") {
-        Notification.requestPermission();
+    // Firebase Cloud Messaging: 앱이 열려 있지 않아도 푸시를 받기 위한 등록
+    // Firebase Console > 프로젝트 설정 > 클라우드 메시징 > 웹 푸시 인증서의 공개 키를 입력하세요.
+    const FCM_VAPID_PUBLIC_KEY = 'YOUR_PUBLIC_VAPID_KEY';
+    let fcmMessaging = null;
+    let fcmMessageHandlerAttached = false;
+
+    async function requestNotificationPermission() {
+      if (!("Notification" in window) || !('serviceWorker' in navigator) || !firebase.messaging) return;
+      try {
+        let permission = Notification.permission;
+        if (permission === 'default') permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+        if (!FCM_VAPID_PUBLIC_KEY || FCM_VAPID_PUBLIC_KEY === 'YOUR_PUBLIC_VAPID_KEY') {
+          console.warn('FCM VAPID 공개 키를 index.html에 설정해야 푸시 등록이 완료됩니다.');
+          return;
+        }
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        fcmMessaging = firebase.messaging();
+        const token = await fcmMessaging.getToken({ vapidKey: FCM_VAPID_PUBLIC_KEY, serviceWorkerRegistration: registration });
+        if (!token || !window.deviceId || !window.userName) return;
+        await db.ref('kakao_chat_app/fcmTokens/' + window.deviceId).set({
+          token: token,
+          deviceId: window.deviceId,
+          userName: window.userName,
+          updatedAt: Date.now()
+        });
+        if (!fcmMessageHandlerAttached) {
+          fcmMessaging.onMessage(payload => {
+            const data = payload && payload.data ? payload.data : {};
+            // 현재 보고 있는 방의 새 메시지는 화면에 표시되므로 중복 알림을 생략
+            if (document.visibilityState === 'visible' && window.currentRoomId && data.roomId === window.currentRoomId) return;
+            if (Notification.permission === 'granted') {
+              new Notification(data.title || '쌉싸오톡 새 메시지', {
+                body: data.body || '새 메시지가 도착했습니다.',
+                icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png',
+                tag: data.roomId || 'ssapsao-message'
+              });
+            }
+          });
+          fcmMessageHandlerAttached = true;
+        }
+      } catch (e) {
+        console.warn('푸시 알림 등록 실패:', e);
       }
     }
 
     function sendPushNotification(title, body) {
       if ("Notification" in window && Notification.permission === "granted") {
         try {
-          new Notification(title, {
-            body: body,
-            icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png'
-          });
-        } catch (e) {
-          console.log('Notification send failed:', e);
-        }
+          new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png' });
+        } catch (e) { console.log('Notification send failed:', e); }
       }
     }
 
@@ -1153,6 +1189,13 @@
       memberRef.set(true);
       memberRef.onDisconnect().remove();
 
+      // 이 기기가 참여한 방을 저장해, 브라우저를 닫아도 해당 방 메시지 푸시를 받을 수 있게 합니다.
+      if (window.deviceId && window.userName) {
+        db.ref(`kakao_chat_app/notification_room_members/${roomId}/${window.deviceId}`).set({
+          deviceId: window.deviceId, userName: window.userName, joinedAt: Date.now()
+        });
+      }
+
       // Firebase 서버단에 직접 연결 끊김 예약
       const now = new Date();
       const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -1178,9 +1221,7 @@
           playBeepSound();
           
           const latestMsg = msgList[msgList.length - 1];
-          if (latestMsg && latestMsg.sender !== window.userName && latestMsg.type !== 'system') {
-            sendPushNotification(`${latestMsg.sender} (${roomName})`, latestMsg.text);
-          }
+          // 푸시 알림은 Firebase Cloud Messaging에서 처리합니다.
         }
         previousMsgCount = msgList.length;
 
