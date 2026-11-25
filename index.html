@@ -118,7 +118,11 @@
           <i id="roomHeaderMuteIcon" class="fa-solid fa-bell-slash text-xs text-slate-600 dark:text-slate-400 hidden shrink-0" title="알림 꺼짐"></i>
         </div>
       </div>
-      <div class="flex items-center gap-1 shrink-0">
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="sendRoomCallPush()" id="callRoomBtn" title="채팅방 호출" class="px-2.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-900 text-xs font-black flex items-center gap-1 shadow-xs transition">
+          <i class="fa-solid fa-bullhorn text-[11px]"></i>
+          <span>호출</span>
+        </button>
         <button onclick="openRoomDrawer()" title="채팅방 서랍 메뉴" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-800 dark:text-white hover:bg-black/5 transition">
           <i class="fa-solid fa-bars text-lg"></i>
         </button>
@@ -514,6 +518,9 @@
   </div>
 
   <script>
+    // 앱 꺼진 상태 푸시를 실제로 쏴줄 중계 서버 주소 (무료 서버 배포 후 URL 입력)
+    window.CALL_PUSH_ENDPOINT = window.CALL_PUSH_ENDPOINT || "";
+
     let audioCtx = null;
     window.allUsersData = {};
     window.allRoomsData = {};
@@ -579,6 +586,74 @@
     window.registerNativeFcmToken = function(token) {
       if (!token) return;
       syncFcmTokenToDb(token);
+    };
+
+    // 채팅방 상단 '호출' 버튼 클릭 시 발송
+    let lastCallSentAt = 0;
+    window.sendRoomCallPush = async function() {
+      if (!window.currentRoomId) return;
+
+      const nowMs = Date.now();
+      if (nowMs - lastCallSentAt < 3000) {
+        showAlert('잠시 후 다시 호출해 주세요.');
+        return;
+      }
+      lastCallSentAt = nowMs;
+
+      const roomId = window.currentRoomId;
+      const roomName = window.currentRoomName || '채팅방';
+      const callerName = window.userName || '누군가';
+
+      const membersObj = window.roomMembersMap[roomId] || {};
+      const targetDeviceIds = [];
+      const targetTokens = [];
+
+      Object.entries(membersObj).forEach(([memberKey, val]) => {
+        const mDeviceId = (val && typeof val === 'object' && val.deviceId) ? val.deviceId : memberKey;
+        const mName = (val && typeof val === 'object' && val.name) ? val.name : memberKey;
+        const isSelf = mDeviceId === window.deviceId || (window.userName && mName === window.userName);
+        if (isSelf) return;
+
+        targetDeviceIds.push(mDeviceId);
+        const userRecord = window.allUsersData[mDeviceId];
+        if (userRecord && userRecord.fcmToken) {
+          targetTokens.push(userRecord.fcmToken);
+        }
+      });
+
+      playBeepSound();
+      sendSystemMessage(`${callerName}님이 채팅방 호출을 보냈습니다.`);
+
+      if (!window.CALL_PUSH_ENDPOINT) {
+        showAlert('호출 신호를 남겼습니다. 앱 꺼진 상태 푸시 발송을 위해 중계 서버 URL을 연결해 주세요.');
+        return;
+      }
+
+      try {
+        const res = await fetch(window.CALL_PUSH_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId: roomId,
+            roomName: roomName,
+            callerName: callerName,
+            callerDeviceId: window.deviceId,
+            title: '채팅방 호출',
+            body: `[${roomName}] ${callerName}님이 채팅방 호출을 보냈습니다.`,
+            targetDeviceIds: targetDeviceIds,
+            targetTokens: targetTokens
+          })
+        });
+
+        if (!res.ok) {
+          showAlert('호출 푸시 요청에 실패했습니다.');
+          return;
+        }
+        showAlert(`[${roomName}] 멤버들에게 호출 알림을 보냈습니다.`);
+      } catch (err) {
+        console.log('Call push failed:', err);
+        showAlert('호출 서버 연결 중 오류가 발생했습니다.');
+      }
     };
 
     // 서비스 워커 등록 처리
