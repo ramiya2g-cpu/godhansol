@@ -1718,15 +1718,13 @@
       });
     }
 
-    window.sendMessage = function() {
+window.sendMessage = function() {
       const input = document.getElementById('messageInput');
       const text = input.value.trim();
       if (!text || !window.currentRoomId) return;
 
       const roomId = window.currentRoomId;
       const roomName = window.currentRoomName || '채팅방';
-
-      playBeepSound();
 
       const now = new Date();
       const hours = now.getHours();
@@ -1750,7 +1748,6 @@
       input.value = '';
       input.focus();
     };
-
     window.openNoticeModal = function() {
       const currentText = document.getElementById('noticeText').textContent;
       document.getElementById('noticeInput').value = currentText === '공지사항이 없습니다.' ? '' : currentText;
