@@ -517,8 +517,8 @@
     let audioCtx = null;
     window.allUsersData = {};
     window.allRoomsData = {};
-    window.roomMembersMap = {};      // { roomId: { [memberKey]: { name, emoji, joinedAt } } }
-    window.roomMessagesMap = {};     // { roomId: { [msgKey]: msgObj } }
+    window.roomMembersMap = {};
+    window.roomMessagesMap = {};
     window.mutedRooms = JSON.parse(localStorage.getItem('ssapsao_mutedRooms') || '{}');
     window.lastReadMap = JSON.parse(localStorage.getItem('ssapsao_lastReadMap') || '{}');
 
@@ -777,7 +777,6 @@
       return faceEmojis[(index + 15) % faceEmojis.length];
     };
 
-    // 내가 해당 방에 참여 중인지 확인 (deviceId 또는 기존 userName 호환)
     function isJoinedRoom(roomId) {
       const members = window.roomMembersMap[roomId];
       if (!members) return false;
@@ -886,7 +885,6 @@
         db.ref('kakao_chat_app/users/' + oldName).remove();
       }
 
-      // 참여 중인 방들의 내 프로필 정보도 동기화
       Object.keys(window.roomMembersMap).forEach(rId => {
         if (isJoinedRoom(rId)) {
           db.ref(`kakao_chat_app/room_members/${rId}/${window.deviceId}`).update({
@@ -909,7 +907,6 @@
       requestNotificationPermission();
     }
 
-    // 참여한 방 + 알림 ON 인 방에서만 알림 울리도록 처리
     const notifiedMsgIds = new Set();
     function setupGlobalNotifications() {
       const appStartTime = Date.now();
@@ -926,7 +923,6 @@
             if (!m || notifiedMsgIds.has(msgKey)) return;
             notifiedMsgIds.add(msgKey);
 
-            // 현재 방에 들어가 있는 상태라면 읽음 처리 갱신
             if (window.currentRoomId === roomId) {
               markRoomAsRead(roomId);
             } else {
@@ -934,7 +930,6 @@
             }
 
             if (m.timestamp > appStartTime && m.sender !== window.userName && m.type !== 'system') {
-              // 내가 참여 중인 방이고, 알림이 꺼져있지 않으며, 현재 보고 있는 방이 아닐 때만 알림
               if (window.currentRoomId !== roomId && isJoinedRoom(roomId) && !isRoomMuted(roomId)) {
                 const roomName = rooms[roomId] ? rooms[roomId].name : '쌉싸오톡';
                 playBeepSound();
@@ -1006,7 +1001,6 @@
       });
     }
 
-    // 하단 탭 클릭 시 호출
     window.navigateToTab = function(tab) {
       if (window.currentRoomId) {
         detachRoomViewOnly();
@@ -1173,7 +1167,6 @@
         return true;
       });
 
-      // 내가 참여 중인 방을 상단에 먼저 정렬
       rooms.sort((a, b) => {
         const aJoined = isJoinedRoom(a.id) ? 1 : 0;
         const bJoined = isJoinedRoom(b.id) ? 1 : 0;
@@ -1217,7 +1210,7 @@
                   </div>
                   <span id="room_unread_${room.id}" class="hidden min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[11px] font-black rounded-full items-center justify-center shrink-0">0</span>
                 </div>
-                <p id="room_lastmsg_${room.id}" class="text-xs text-slate-500 dark:text-slate-400 truncate">채팅방에 참여해보세요!</p>
+                <p id="room_lastmsg_${room.id}" class="text-xs text-slate-500 dark:text-slate-400 truncate min-h-[16px]"></p>
               </div>
             </div>
             ${window.isAdminLoggedIn ? `
@@ -1238,16 +1231,23 @@
 
           const lastMsgEl = document.getElementById(`room_lastmsg_${room.id}`);
           if (lastMsgEl) {
-            const msgs = Object.values(msgsVal);
-            let validMsg = '채팅방에 참여해보세요!';
-            for (let i = msgs.length - 1; i >= 0; i--) {
-              const m = msgs[i];
-              if (m && m.text && m.type !== 'system') {
-                validMsg = m.text;
-                break;
+            const canPreviewText = window.isAdminLoggedIn || isJoinedRoom(room.id);
+            if (!canPreviewText) {
+              lastMsgEl.textContent = '';
+            } else if (msgSnap.exists()) {
+              const msgs = Object.values(msgsVal);
+              let validMsg = '';
+              for (let i = msgs.length - 1; i >= 0; i--) {
+                const m = msgs[i];
+                if (m && m.text && m.type !== 'system') {
+                  validMsg = m.text;
+                  break;
+                }
               }
+              lastMsgEl.textContent = validMsg;
+            } else {
+              lastMsgEl.textContent = '';
             }
-            lastMsgEl.textContent = validMsg;
           }
           updateRoomListBadges();
         });
@@ -1258,7 +1258,6 @@
 
     let pendingRoomAuth = null;
     window.attemptEnterRoom = function(roomId, roomName, hasPassword) {
-      // 이미 참여 중인 방은 비밀번호 재입력 없이 바로 입장
       if (hasPassword && !window.isAdminLoggedIn && !isJoinedRoom(roomId)) {
         pendingRoomAuth = { id: roomId, name: roomName };
         document.getElementById('authRoomNameText').textContent = `[${roomName}] 비밀번호를 입력해 주세요.`;
@@ -1413,7 +1412,6 @@
       window.currentRoomName = roomName;
       previousMsgCount = 0;
 
-      // 읽음 시간 갱신
       markRoomAsRead(roomId);
 
       document.getElementById('mainHeader').classList.add('hidden');
@@ -1435,7 +1433,6 @@
 
       updateRoomMuteUI(roomId);
 
-      // 처음 참여할 때만 입장 메시지 발송 (이미 참여 중이면 재진입이므로 메시지 없음)
       const memberRef = db.ref(`kakao_chat_app/room_members/${roomId}/${window.deviceId}`);
       memberRef.once('value', snap => {
         const alreadyMember = snap.exists() || isJoinedRoom(roomId);
@@ -1446,7 +1443,6 @@
           joinedAt: snap.exists() && snap.val().joinedAt ? snap.val().joinedAt : Date.now()
         });
 
-        // 예전 이름 키로 남아있던 데이터가 있다면 정리
         if (window.userName && window.userName !== window.deviceId) {
           db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
         }
@@ -1520,7 +1516,6 @@
       drawerList.innerHTML = html || `<div class="text-xs text-slate-400">참여자가 없습니다.</div>`;
     }
 
-    // 단순 화면 이탈 (뒤로가기 / 상단 ← 버튼) — 참여 상태 유지, 퇴장 메시지 미발송
     function detachRoomViewOnly() {
       if (!window.currentRoomId) return;
       const roomId = window.currentRoomId;
@@ -1551,7 +1546,6 @@
       switchTab('chats', true);
     };
 
-    // 채팅방 서랍 열기 / 닫기
     window.openRoomDrawer = function() {
       if (!window.currentRoomId) return;
       document.getElementById('drawerRoomTitle').textContent = window.currentRoomName || '채팅방 서랍';
@@ -1576,7 +1570,6 @@
       }, 240);
     };
 
-    // 방별 알림 토글
     window.toggleCurrentRoomMute = function() {
       const roomId = window.currentRoomId;
       if (!roomId) return;
@@ -1629,7 +1622,6 @@
       }
     }
 
-    // 실제 채팅방 나가기(퇴장) 버튼 처리
     window.promptExplicitLeaveRoom = function() {
       closeRoomDrawer();
       document.getElementById('leaveRoomConfirmModal').classList.remove('hidden');
@@ -1802,7 +1794,6 @@
       return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    // 뒤로가기 / 히스토리 네비게이션 관리 (퇴장시키지 않고 목록 화면만 복귀)
     window.addEventListener('popstate', function (event) {
       const state = event.state;
 
