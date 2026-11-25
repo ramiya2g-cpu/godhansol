@@ -118,11 +118,7 @@
           <i id="roomHeaderMuteIcon" class="fa-solid fa-bell-slash text-xs text-slate-600 dark:text-slate-400 hidden shrink-0" title="알림 꺼짐"></i>
         </div>
       </div>
-      <div class="flex items-center gap-1.5 shrink-0">
-        <button onclick="sendRoomCallPush()" id="callRoomBtn" title="채팅방 호출" class="px-2.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-900 text-xs font-black flex items-center gap-1 shadow-xs transition">
-          <i class="fa-solid fa-bullhorn text-[11px]"></i>
-          <span>호출</span>
-        </button>
+      <div class="flex items-center gap-1 shrink-0">
         <button onclick="openRoomDrawer()" title="채팅방 서랍 메뉴" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-800 dark:text-white hover:bg-black/5 transition">
           <i class="fa-solid fa-bars text-lg"></i>
         </button>
@@ -200,10 +196,13 @@
       <div id="roomView" class="flex-1 flex flex-col overflow-hidden bg-[#abc1d1] dark:bg-slate-900 hidden">
         <main class="flex-1 px-3 py-3 overflow-y-auto space-y-3 no-scrollbar flex flex-col" id="chatContainer"></main>
         
-        <footer class="bg-white dark:bg-slate-950 px-3 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0">
+        <footer class="bg-white dark:bg-slate-950 px-3 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 shrink-0">
+          <button onclick="callRoomMembers()" id="callBtn" title="채팅방 호출" class="w-10 h-10 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-700 rounded-xl transition flex items-center justify-center font-black shadow-xs shrink-0">
+            <i class="fa-solid fa-bell text-sm"></i>
+          </button>
           <input type="search" id="messageInput" placeholder="" onkeypress="if(event.key==='Enter') sendMessage()"
             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_chat_msg_input_field"
-            class="flex-1 bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-amber-400 rounded-xl px-4 py-2.5 text-sm font-medium outline-none transition text-slate-900 dark:text-white">
+            class="flex-1 min-w-0 bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-amber-400 rounded-xl px-3.5 py-2.5 text-sm font-medium outline-none transition text-slate-900 dark:text-white">
           <button onclick="sendMessage()" id="sendBtn" class="w-10 h-10 bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-900 rounded-xl transition flex items-center justify-center font-black shadow-sm shrink-0">
             <i class="fa-solid fa-paper-plane text-sm"></i>
           </button>
@@ -231,7 +230,6 @@
     <div id="roomDrawerOverlay" onclick="closeRoomDrawer()" class="fixed inset-0 bg-black/50 z-40 hidden max-w-[430px] mx-auto">
       <div id="roomDrawerPanel" onclick="event.stopPropagation()" class="absolute top-0 right-0 bottom-0 w-[82%] max-w-[320px] bg-slate-100 dark:bg-slate-900 shadow-2xl flex flex-col justify-between translate-x-full">
         
-        <!-- 서랍 상단 바 (닫기 & 방별 알림 토글) -->
         <div class="bg-white dark:bg-slate-950 px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
           <button onclick="closeRoomDrawer()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
             <i class="fa-solid fa-arrow-left text-base"></i>
@@ -242,10 +240,8 @@
           </button>
         </div>
 
-        <!-- 서랍 본문 (공지 & 대화상대 목록) -->
         <div class="flex-1 overflow-y-auto p-3 space-y-3 no-scrollbar">
           
-          <!-- 알림 상태 안내 카드 -->
           <div onclick="toggleCurrentRoomMute()" class="bg-white dark:bg-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-xs cursor-pointer border border-slate-200/60 dark:border-slate-700/50">
             <div class="flex items-center gap-2.5">
               <div id="drawerAlarmBadge" class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-base">
@@ -259,7 +255,6 @@
             <span id="drawerAlarmTogglePill" class="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-slate-900">ON</span>
           </div>
 
-          <!-- 톡보드 / 공지 바로가기 -->
           <div class="bg-white dark:bg-slate-800 rounded-2xl p-3 shadow-xs border border-slate-200/60 dark:border-slate-700/50">
             <button onclick="closeRoomDrawer(); openNoticeModal();" class="w-full flex items-center justify-between py-1.5 text-left hover:opacity-80 transition">
               <div class="flex items-center gap-2.5">
@@ -270,7 +265,6 @@
             </button>
           </div>
 
-          <!-- 대화상대 목록 -->
           <div class="bg-white dark:bg-slate-800 rounded-2xl p-3.5 shadow-xs border border-slate-200/60 dark:border-slate-700/50 space-y-2.5">
             <div class="flex items-center justify-between">
               <span class="text-xs font-black text-slate-800 dark:text-slate-200">대화상대 (<span id="drawerMemberCount">1</span>)</span>
@@ -281,7 +275,6 @@
 
         </div>
 
-        <!-- 서랍 하단 (실제 채팅방 나가기 = 퇴장) -->
         <div class="bg-white dark:bg-slate-950 px-4 py-3.5 border-t border-slate-200 dark:border-slate-800 shrink-0">
           <button onclick="promptExplicitLeaveRoom()" class="w-full py-2.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 font-black text-xs flex items-center justify-between transition">
             <span>채팅방 나가기 (퇴장)</span>
@@ -358,7 +351,6 @@
     </div>
   </div>
 
-  <!-- 비밀번호 입력 입장 모달 -->
   <div id="roomAuthModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
       <div class="text-center">
@@ -380,7 +372,6 @@
     </div>
   </div>
 
-  <!-- 채팅방 실제 나가기(퇴장) 확인 모달 -->
   <div id="leaveRoomConfirmModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
       <div class="text-center">
@@ -399,7 +390,6 @@
     </div>
   </div>
 
-  <!-- 관리자 로그인 모달 -->
   <div id="adminLoginModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
       <div class="text-center">
@@ -518,8 +508,7 @@
   </div>
 
   <script>
-    // 앱 꺼진 상태 푸시를 실제로 쏴줄 중계 서버 주소 (무료 서버 배포 후 URL 입력)
-    window.CALL_PUSH_ENDPOINT = window.CALL_PUSH_ENDPOINT || "";
+    const PUSH_SERVER_URL = 'https://ssapssao-push-server.onrender.com/send-call';
 
     let audioCtx = null;
     window.allUsersData = {};
@@ -588,71 +577,59 @@
       syncFcmTokenToDb(token);
     };
 
-    // 채팅방 상단 '호출' 버튼 클릭 시 발송
-    let lastCallSentAt = 0;
-    window.sendRoomCallPush = async function() {
+    // 채팅방 멤버 호출 (Render 푸시 서버로 발송)
+    window.callRoomMembers = async function() {
       if (!window.currentRoomId) return;
-
-      const nowMs = Date.now();
-      if (nowMs - lastCallSentAt < 3000) {
-        showAlert('잠시 후 다시 호출해 주세요.');
-        return;
-      }
-      lastCallSentAt = nowMs;
 
       const roomId = window.currentRoomId;
       const roomName = window.currentRoomName || '채팅방';
-      const callerName = window.userName || '누군가';
-
       const membersObj = window.roomMembersMap[roomId] || {};
-      const targetDeviceIds = [];
-      const targetTokens = [];
+      const tokens = [];
 
-      Object.entries(membersObj).forEach(([memberKey, val]) => {
-        const mDeviceId = (val && typeof val === 'object' && val.deviceId) ? val.deviceId : memberKey;
-        const mName = (val && typeof val === 'object' && val.name) ? val.name : memberKey;
-        const isSelf = mDeviceId === window.deviceId || (window.userName && mName === window.userName);
-        if (isSelf) return;
+      Object.entries(membersObj).forEach(([key, val]) => {
+        const mDeviceId = (val && typeof val === 'object' && val.deviceId) ? val.deviceId : key;
+        const mName = (val && typeof val === 'object' && val.name) ? val.name : key;
 
-        targetDeviceIds.push(mDeviceId);
-        const userRecord = window.allUsersData[mDeviceId];
-        if (userRecord && userRecord.fcmToken) {
-          targetTokens.push(userRecord.fcmToken);
+        if (mDeviceId === window.deviceId || mName === window.userName) return;
+
+        const userRecord = window.allUsersData[mDeviceId] ||
+          Object.values(window.allUsersData || {}).find(u => u && u.name === mName);
+
+        const isMutedInRoom = !!(userRecord && userRecord.mutedRooms && userRecord.mutedRooms[roomId]);
+        if (!isMutedInRoom && userRecord && userRecord.fcmToken) {
+          tokens.push(userRecord.fcmToken);
         }
       });
 
-      playBeepSound();
-      sendSystemMessage(`${callerName}님이 채팅방 호출을 보냈습니다.`);
-
-      if (!window.CALL_PUSH_ENDPOINT) {
-        showAlert('호출 신호를 남겼습니다. 앱 꺼진 상태 푸시 발송을 위해 중계 서버 URL을 연결해 주세요.');
+      const uniqueTokens = [...new Set(tokens)];
+      if (uniqueTokens.length === 0) {
+        showAlert('호출할 수 있는 기기(FCM 토큰 등록된 상대)가 없습니다.');
         return;
       }
 
+      playBeepSound();
+      sendSystemMessage(`${window.userName}님이 채팅방 멤버를 호출했습니다.`);
+
       try {
-        const res = await fetch(window.CALL_PUSH_ENDPOINT, {
+        const res = await fetch(PUSH_SERVER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            tokens: uniqueTokens,
+            title: `[${roomName}] ${window.userName}님의 호출`,
+            body: `${window.userName}님이 채팅방에서 호출했습니다!`,
             roomId: roomId,
-            roomName: roomName,
-            callerName: callerName,
-            callerDeviceId: window.deviceId,
-            title: '채팅방 호출',
-            body: `[${roomName}] ${callerName}님이 채팅방 호출을 보냈습니다.`,
-            targetDeviceIds: targetDeviceIds,
-            targetTokens: targetTokens
+            roomName: roomName
           })
         });
 
         if (!res.ok) {
-          showAlert('호출 푸시 요청에 실패했습니다.');
-          return;
+          const errText = await res.text();
+          throw new Error(errText || '호출 전송 실패');
         }
-        showAlert(`[${roomName}] 멤버들에게 호출 알림을 보냈습니다.`);
       } catch (err) {
-        console.log('Call push failed:', err);
-        showAlert('호출 서버 연결 중 오류가 발생했습니다.');
+        console.error('Call push error:', err);
+        showAlert('호출 서버 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       }
     };
 
