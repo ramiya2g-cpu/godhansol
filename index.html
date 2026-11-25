@@ -51,9 +51,11 @@
       max-width: 430px;
       margin: 0 auto;
     }
-    /* 로딩 화면 애니메이션 스타일 */
     #splashScreen {
       transition: opacity 0.4s ease-out;
+    }
+    #roomDrawerPanel {
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
     }
   </style>
 </head>
@@ -106,29 +108,32 @@
 
     <!-- CHAT ROOM HEADER -->
     <header id="roomHeader" class="bg-[#abc1d1] dark:bg-slate-900 px-3 py-2.5 border-b border-black/5 dark:border-white/5 sticky top-0 z-30 hidden items-center justify-between shrink-0">
-      <div class="flex items-center gap-3">
-        <button onclick="history.back()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-800 dark:text-white hover:bg-black/5 transition">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <button onclick="exitRoomToList()" title="목록으로 돌아가기 (참여 유지)" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-800 dark:text-white hover:bg-black/5 transition shrink-0">
           <i class="fa-solid fa-arrow-left text-lg"></i>
         </button>
-        <div>
-          <div class="flex items-center gap-1.5">
-            <h2 id="roomTitleText" class="font-black text-base text-slate-900 dark:text-white leading-tight">채팅방</h2>
-            <span id="roomMemberCount" class="text-xs font-bold text-slate-600 dark:text-slate-400">1</span>
-          </div>
+        <div class="flex items-center gap-1.5 min-w-0">
+          <h2 id="roomTitleText" class="font-black text-base text-slate-900 dark:text-white leading-tight truncate">채팅방</h2>
+          <span id="roomMemberCount" class="text-xs font-bold text-slate-600 dark:text-slate-400 shrink-0">1</span>
+          <i id="roomHeaderMuteIcon" class="fa-solid fa-bell-slash text-xs text-slate-600 dark:text-slate-400 hidden shrink-0" title="알림 꺼짐"></i>
         </div>
       </div>
-      <div></div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="openRoomDrawer()" title="채팅방 서랍 메뉴" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-800 dark:text-white hover:bg-black/5 transition">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+      </div>
     </header>
 
     <!-- NOTICE BANNER -->
-    <div id="roomNoticeBanner" class="bg-amber-100/95 dark:bg-amber-900/90 border-b border-amber-200/50 px-3.5 py-2.5 z-10 hidden items-center justify-between shadow-xs shrink-0">
+    <div id="roomNoticeBanner" class="bg-amber-100/95 dark:bg-amber-900/90 border-b border-amber-200/50 px-3.5 py-2 z-10 hidden items-center justify-between shadow-xs shrink-0">
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <i class="fa-solid fa-thumbtack text-amber-600 dark:text-amber-400 text-base shrink-0"></i>
-        <p id="noticeText" class="text-base font-black text-slate-900 dark:text-slate-100 truncate">
+        <i class="fa-solid fa-thumbtack text-amber-600 dark:text-amber-400 text-sm shrink-0"></i>
+        <p id="noticeText" class="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
           공지사항이 없습니다.
         </p>
       </div>
-      <button onclick="openNoticeModal()" class="ml-2 text-xs font-black bg-amber-400 hover:bg-amber-500 text-slate-900 px-2.5 py-1 rounded-md shrink-0 shadow-xs">
+      <button onclick="openNoticeModal()" class="ml-2 text-[11px] font-black bg-amber-400 hover:bg-amber-500 text-slate-900 px-2 py-1 rounded-md shrink-0 shadow-xs">
         공지 등록
       </button>
     </div>
@@ -165,7 +170,7 @@
       </div>
 
       <!-- TAB 2: CHAT ROOMS LIST -->
-      <div id="tabChats" class="flex-1 overflow-y-auto bg-white dark:bg-slate-950 hidden flex flex-col">
+      <div id="tabChats" class="flex-1 overflow-y-auto bg-white dark:bg-slate-950 hidden flex-col">
         <div class="mx-3.5 my-3 bg-slate-100 dark:bg-slate-800/80 rounded-2xl p-3 flex items-center justify-between shadow-xs border border-slate-200/60 dark:border-slate-700/50 shrink-0">
           <div class="flex-1 min-w-0 pr-2">
             <div class="flex items-center gap-1.5 mb-1">
@@ -205,15 +210,83 @@
 
     <!-- BOTTOM NAVIGATION BAR -->
     <nav id="bottomNav" class="bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 h-16 flex items-center justify-around shrink-0 z-20">
-      <button onclick="navigateToTab('friends')" id="navBtnFriends" class="flex flex-col items-center justify-center flex-1 h-full text-amber-500 transition">
+      <button onclick="navigateToTab('friends')" id="navBtnFriends" class="flex flex-col items-center justify-center flex-1 h-full text-amber-500 transition relative">
         <i class="fa-solid fa-user text-lg mb-1"></i>
         <span class="text-[11px] font-bold">친구</span>
       </button>
-      <button onclick="navigateToTab('chats')" id="navBtnChats" class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-600 transition">
-        <i class="fa-solid fa-comment text-lg mb-1"></i>
+      <button onclick="navigateToTab('chats')" id="navBtnChats" class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-600 transition relative">
+        <div class="relative inline-flex items-center justify-center">
+          <i class="fa-solid fa-comment text-lg mb-1"></i>
+          <span id="totalUnreadBadge" class="hidden absolute -top-1.5 -right-3.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-xs">0</span>
+        </div>
         <span class="text-[11px] font-bold">채팅</span>
       </button>
     </nav>
+
+    <!-- KAKAO-STYLE CHAT ROOM DRAWER (채팅방 서랍 메뉴) -->
+    <div id="roomDrawerOverlay" onclick="closeRoomDrawer()" class="fixed inset-0 bg-black/50 z-40 hidden max-w-[430px] mx-auto">
+      <div id="roomDrawerPanel" onclick="event.stopPropagation()" class="absolute top-0 right-0 bottom-0 w-[82%] max-w-[320px] bg-slate-100 dark:bg-slate-900 shadow-2xl flex flex-col justify-between translate-x-full">
+        
+        <!-- 서랍 상단 바 (닫기 & 방별 알림 토글) -->
+        <div class="bg-white dark:bg-slate-950 px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+          <button onclick="closeRoomDrawer()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+            <i class="fa-solid fa-arrow-left text-base"></i>
+          </button>
+          <span class="text-sm font-black text-slate-900 dark:text-white truncate px-2" id="drawerRoomTitle">채팅방 서랍</span>
+          <button onclick="toggleCurrentRoomMute()" id="drawerMuteBtn" title="채팅방 알림 켜기/끄기" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            <i id="drawerMuteIcon" class="fa-solid fa-bell text-base"></i>
+          </button>
+        </div>
+
+        <!-- 서랍 본문 (공지 & 대화상대 목록) -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-3 no-scrollbar">
+          
+          <!-- 알림 상태 안내 카드 -->
+          <div onclick="toggleCurrentRoomMute()" class="bg-white dark:bg-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-xs cursor-pointer border border-slate-200/60 dark:border-slate-700/50">
+            <div class="flex items-center gap-2.5">
+              <div id="drawerAlarmBadge" class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-base">
+                <i id="drawerAlarmCardIcon" class="fa-solid fa-bell"></i>
+              </div>
+              <div>
+                <div class="text-xs font-black text-slate-900 dark:text-white">채팅방 알림</div>
+                <div id="drawerAlarmStatusText" class="text-[11px] font-bold text-emerald-600">알림 켜짐 (새 메시지 수신 시 울림)</div>
+              </div>
+            </div>
+            <span id="drawerAlarmTogglePill" class="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-slate-900">ON</span>
+          </div>
+
+          <!-- 톡보드 / 공지 바로가기 -->
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-3 shadow-xs border border-slate-200/60 dark:border-slate-700/50">
+            <button onclick="closeRoomDrawer(); openNoticeModal();" class="w-full flex items-center justify-between py-1.5 text-left hover:opacity-80 transition">
+              <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-bullhorn text-sky-500 text-sm w-5 text-center"></i>
+                <span class="text-xs font-black text-slate-800 dark:text-slate-100">공지 등록 / 수정</span>
+              </div>
+              <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+            </button>
+          </div>
+
+          <!-- 대화상대 목록 -->
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-3.5 shadow-xs border border-slate-200/60 dark:border-slate-700/50 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-slate-800 dark:text-slate-200">대화상대 (<span id="drawerMemberCount">1</span>)</span>
+              <span class="text-[10px] font-bold text-slate-400">참여 유지 중</span>
+            </div>
+            <div id="drawerMemberList" class="space-y-2 pt-1"></div>
+          </div>
+
+        </div>
+
+        <!-- 서랍 하단 (실제 채팅방 나가기 = 퇴장) -->
+        <div class="bg-white dark:bg-slate-950 px-4 py-3.5 border-t border-slate-200 dark:border-slate-800 shrink-0">
+          <button onclick="promptExplicitLeaveRoom()" class="w-full py-2.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 font-black text-xs flex items-center justify-between transition">
+            <span>채팅방 나가기 (퇴장)</span>
+            <i class="fa-solid fa-right-from-bracket text-sm"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
 
   </div>
 
@@ -221,7 +294,6 @@
   <div id="profileModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
       <div class="text-center">
-        <!-- 현재 선택된 프로필 이모티콘 미리보기 -->
         <div id="selectedEmojiPreview" class="w-16 h-16 bg-amber-100 dark:bg-amber-900/40 rounded-2xl flex items-center justify-center mx-auto mb-2 text-3xl font-black shadow-md cursor-pointer">
           😀
         </div>
@@ -229,12 +301,9 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">사용할 이름과 프로필 이모티콘을 선택하세요.</p>
       </div>
 
-      <!-- 이모티콘 선택 팔레트 -->
       <div>
         <label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1.5">프로필 이모티콘 선택</label>
-        <div id="emojiPickerGrid" class="grid grid-cols-7 gap-1.5 bg-slate-100 dark:bg-slate-800 p-2.5 rounded-2xl max-h-36 overflow-y-auto no-scrollbar border border-slate-200 dark:border-slate-700">
-          <!-- JS로 동적 생성 -->
-        </div>
+        <div id="emojiPickerGrid" class="grid grid-cols-7 gap-1.5 bg-slate-100 dark:bg-slate-800 p-2.5 rounded-2xl max-h-36 overflow-y-auto no-scrollbar border border-slate-200 dark:border-slate-700"></div>
       </div>
 
       <div>
@@ -303,6 +372,25 @@
       <div class="flex gap-2">
         <button onclick="submitRoomAuth()" class="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-black rounded-xl text-sm shadow-md">입장하기</button>
         <button onclick="closeRoomAuthModal()" class="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 채팅방 실제 나가기(퇴장) 확인 모달 -->
+  <div id="leaveRoomConfirmModal" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
+      <div class="text-center">
+        <div class="w-14 h-14 bg-red-500 rounded-2xl flex items-center justify-center mx-auto mb-3 text-white text-xl font-black shadow-md">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </div>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">채팅방 나가기</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+          채팅방에서 완전히 퇴장하시겠습니까?<br>퇴장하면 대화 참여가 해제되며 알림을 받지 않습니다.
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="executeExplicitLeaveRoom()" class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl text-sm shadow-md">나가기</button>
+        <button onclick="closeLeaveRoomConfirmModal()" class="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm">취소</button>
       </div>
     </div>
   </div>
@@ -428,6 +516,29 @@
   <script>
     let audioCtx = null;
     window.allUsersData = {};
+    window.allRoomsData = {};
+    window.roomMembersMap = {};      // { roomId: { [memberKey]: { name, emoji, joinedAt } } }
+    window.roomMessagesMap = {};     // { roomId: { [msgKey]: msgObj } }
+    window.mutedRooms = JSON.parse(localStorage.getItem('ssapsao_mutedRooms') || '{}');
+    window.lastReadMap = JSON.parse(localStorage.getItem('ssapsao_lastReadMap') || '{}');
+
+    function saveMutedRooms() {
+      localStorage.setItem('ssapsao_mutedRooms', JSON.stringify(window.mutedRooms));
+      if (window.deviceId) {
+        db.ref(`kakao_chat_app/users/${window.deviceId}/mutedRooms`).set(window.mutedRooms);
+      }
+    }
+
+    function saveLastReadMap() {
+      localStorage.setItem('ssapsao_lastReadMap', JSON.stringify(window.lastReadMap));
+    }
+
+    function markRoomAsRead(roomId) {
+      if (!roomId) return;
+      window.lastReadMap[roomId] = Date.now();
+      saveLastReadMap();
+      updateRoomListBadges();
+    }
 
     function requestNotificationPermission() {
       if ("Notification" in window && Notification.permission !== "granted") {
@@ -435,9 +546,18 @@
       }
     }
 
+    // 추후 안드로이드 앱(WebView / Capacitor)에서 FCM 토큰 전달 시 호출할 전역 브릿지
+    window.registerNativeFcmToken = function(token) {
+      if (!token) return;
+      localStorage.setItem('ssapsao_fcmToken', token);
+      if (window.deviceId) {
+        db.ref(`kakao_chat_app/users/${window.deviceId}/fcmToken`).set(token);
+      }
+    };
+
     // 서비스 워커 등록 처리
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then(reg => {
+      navigator.serviceWorker.register('/sw.js').then(() => {
         console.log('Service Worker Registered');
       }).catch(err => {
         console.log('Service Worker Register Failed', err);
@@ -445,7 +565,7 @@
     }
 
     // 상단바 푸시 알림 발생 함수
-    function sendPushNotification(title, body) {
+    function sendPushNotification(title, body, roomId) {
       if ("Notification" in window && Notification.permission === "granted") {
         try {
           if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -454,7 +574,7 @@
                 body: body,
                 icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png',
                 badge: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png',
-                tag: 'ssapsao-msg-' + Date.now(),
+                tag: 'ssapsao-room-' + (roomId || Date.now()),
                 renotify: true
               });
             });
@@ -462,7 +582,7 @@
             const notification = new Notification(title, {
               body: body,
               icon: 'https://cdn-icons-png.flaticon.com/512/6995/6995699.png',
-              tag: 'ssapsao-msg-' + Date.now(),
+              tag: 'ssapsao-room-' + (roomId || Date.now()),
               renotify: true
             });
             notification.onclick = function() {
@@ -486,7 +606,6 @@
         }
         
         const now = audioCtx.currentTime;
-        
         const osc1 = audioCtx.createOscillator();
         const gain1 = audioCtx.createGain();
         osc1.type = 'sine';
@@ -626,15 +745,11 @@
     window.userAvatarEmoji = '😀';
     
     const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('maxTouchPoints' in navigator && navigator.maxTouchPoints > 0);
-
-    if (isMobileDevice) {
-      window.isAdminLoggedIn = localStorage.getItem('ssapsao_admin') === 'true';
-    } else {
-      window.isAdminLoggedIn = false;
-    }
+    window.isAdminLoggedIn = isMobileDevice ? (localStorage.getItem('ssapsao_admin') === 'true') : false;
 
     window.currentTab = 'friends';
     window.currentRoomId = null;
+    window.currentRoomName = '';
 
     const faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '👻', '🤖', '🐱', '🐶', '🦊', '🦁', '🔥', '⭐'];
 
@@ -643,16 +758,13 @@
       if (name === window.userName) {
         return { emoji: window.userAvatarEmoji || '😀' };
       }
-      
       const foundUser = Object.values(window.allUsersData || {}).find(u => u.name === name);
       if (foundUser && foundUser.emoji) {
         return { emoji: foundUser.emoji };
       }
-
       const otherNames = [...new Set(allUserNames.filter(n => n !== window.userName))].sort();
       let index = otherNames.indexOf(name);
       if (index === -1) index = 0;
-
       const available = faceEmojis.filter(e => e !== window.userAvatarEmoji);
       const emoji = available[index % available.length] || '😀';
       return { emoji };
@@ -662,9 +774,21 @@
       const sortedRoomIds = [...new Set(allRoomIds)].sort();
       let index = sortedRoomIds.indexOf(roomId);
       if (index === -1) index = 0;
-
       return faceEmojis[(index + 15) % faceEmojis.length];
     };
+
+    // 내가 해당 방에 참여 중인지 확인 (deviceId 또는 기존 userName 호환)
+    function isJoinedRoom(roomId) {
+      const members = window.roomMembersMap[roomId];
+      if (!members) return false;
+      if (members[window.deviceId]) return true;
+      if (window.userName && members[window.userName]) return true;
+      return Object.values(members).some(m => m && typeof m === 'object' && (m.deviceId === window.deviceId || m.name === window.userName));
+    }
+
+    function isRoomMuted(roomId) {
+      return !!window.mutedRooms[roomId];
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
@@ -680,7 +804,6 @@
 
       renderEmojiPicker();
 
-      // 초기 히스토리 상태 설정 (친구 탭)
       if (!history.state) {
         history.replaceState({ view: 'friends' }, '', '#friends');
       }
@@ -763,6 +886,17 @@
         db.ref('kakao_chat_app/users/' + oldName).remove();
       }
 
+      // 참여 중인 방들의 내 프로필 정보도 동기화
+      Object.keys(window.roomMembersMap).forEach(rId => {
+        if (isJoinedRoom(rId)) {
+          db.ref(`kakao_chat_app/room_members/${rId}/${window.deviceId}`).update({
+            deviceId: window.deviceId,
+            name: window.userName,
+            emoji: window.userAvatarEmoji
+          });
+        }
+      });
+
       document.getElementById('profileModal').classList.add('hidden');
       initApp();
     };
@@ -775,24 +909,36 @@
       requestNotificationPermission();
     }
 
-    // 전역 알림 처리 함수
+    // 참여한 방 + 알림 ON 인 방에서만 알림 울리도록 처리
+    const notifiedMsgIds = new Set();
     function setupGlobalNotifications() {
       const appStartTime = Date.now();
 
       db.ref('kakao_chat_app/rooms').on('value', roomSnap => {
         const rooms = roomSnap.val() || {};
+        window.allRoomsData = rooms;
         
         Object.keys(rooms).forEach(roomId => {
           db.ref(`kakao_chat_app/messages/${roomId}`).off('child_added');
-          db.ref(`kakao_chat_app/messages/${roomId}`).on('child_added', msgSnap => {
+          db.ref(`kakao_chat_app/messages/${roomId}`).limitToLast(20).on('child_added', msgSnap => {
+            const msgKey = msgSnap.key;
             const m = msgSnap.val();
-            if (!m) return;
+            if (!m || notifiedMsgIds.has(msgKey)) return;
+            notifiedMsgIds.add(msgKey);
+
+            // 현재 방에 들어가 있는 상태라면 읽음 처리 갱신
+            if (window.currentRoomId === roomId) {
+              markRoomAsRead(roomId);
+            } else {
+              updateRoomListBadges();
+            }
 
             if (m.timestamp > appStartTime && m.sender !== window.userName && m.type !== 'system') {
-              if (window.currentRoomId !== roomId) {
+              // 내가 참여 중인 방이고, 알림이 꺼져있지 않으며, 현재 보고 있는 방이 아닐 때만 알림
+              if (window.currentRoomId !== roomId && isJoinedRoom(roomId) && !isRoomMuted(roomId)) {
                 const roomName = rooms[roomId] ? rooms[roomId].name : '쌉싸오톡';
                 playBeepSound();
-                sendPushNotification(`[${roomName}] ${m.sender}`, m.text);
+                sendPushNotification(`[${roomName}] ${m.sender}`, m.text, roomId);
               }
             }
           });
@@ -802,8 +948,16 @@
 
     function updateUserPresence() {
       if (!window.userName || !window.deviceId) return;
+      const savedToken = localStorage.getItem('ssapsao_fcmToken') || null;
       const userRef = db.ref('kakao_chat_app/users/' + window.deviceId);
-      userRef.set({ deviceId: window.deviceId, name: window.userName, emoji: window.userAvatarEmoji, online: true });
+      userRef.update({
+        deviceId: window.deviceId,
+        name: window.userName,
+        emoji: window.userAvatarEmoji,
+        online: true,
+        mutedRooms: window.mutedRooms,
+        ...(savedToken ? { fcmToken: savedToken } : {})
+      });
       userRef.onDisconnect().update({ online: false });
     }
 
@@ -815,15 +969,16 @@
 
     document.addEventListener('visibilitychange', () => {
       if (window.deviceId) {
-        if (document.visibilityState === 'visible') {
-          db.ref('kakao_chat_app/users/' + window.deviceId).update({ online: true });
-        } else {
-          db.ref('kakao_chat_app/users/' + window.deviceId).update({ online: false });
-        }
+        db.ref('kakao_chat_app/users/' + window.deviceId).update({
+          online: document.visibilityState === 'visible'
+        });
+      }
+      if (document.visibilityState === 'visible' && window.currentRoomId) {
+        markRoomAsRead(window.currentRoomId);
       }
     });
 
-    window.addEventListener('pageshow', (event) => {
+    window.addEventListener('pageshow', () => {
       if (window.deviceId) {
         db.ref('kakao_chat_app/users/' + window.deviceId).update({ online: true });
       }
@@ -836,23 +991,31 @@
         renderFriends(users);
       });
 
+      db.ref('kakao_chat_app/room_members').on('value', snapshot => {
+        window.roomMembersMap = snapshot.val() || {};
+        renderChatRooms(window.allRoomsData);
+        if (window.currentRoomId) {
+          updateCurrentRoomMemberUI(window.currentRoomId);
+        }
+      });
+
       db.ref('kakao_chat_app/rooms').on('value', snapshot => {
         const rooms = snapshot.val() || {};
+        window.allRoomsData = rooms;
         renderChatRooms(rooms);
       });
     }
 
-    // 하단 탭 클릭 시 호출되는 함수 (히스토리 상태 추가)
+    // 하단 탭 클릭 시 호출
     window.navigateToTab = function(tab) {
       if (window.currentRoomId) {
-        leaveCurrentRoom(true);
+        detachRoomViewOnly();
       }
       history.pushState({ view: tab }, '', '#' + tab);
       switchTab(tab, true);
     };
 
-    // 실제 화면 전환 처리 함수
-    window.switchTab = function(tab, skipHistory = false) {
+    window.switchTab = function(tab) {
       window.currentTab = tab;
       const tabFriends = document.getElementById('tabFriends');
       const tabChats = document.getElementById('tabChats');
@@ -881,19 +1044,19 @@
 
       statusBar.className = "bg-white dark:bg-slate-900 px-4 py-1.5 flex justify-between items-center text-sm font-bold text-slate-800 dark:text-slate-200 shrink-0 select-none z-30 transition-colors duration-200";
 
-      btnFriends.className = "flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-600 transition";
-      btnChats.className = "flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-600 transition";
+      btnFriends.className = "flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-600 transition relative";
+      btnChats.className = "flex flex-col items-center justify-center flex-1 h-full text-slate-400 hover:text-slate-600 transition relative";
 
       if (tab === 'friends') {
         tabFriends.classList.remove('hidden');
         headerTitle.textContent = '쌉싸오톡';
-        btnFriends.className = "flex flex-col items-center justify-center flex-1 h-full text-amber-500 transition";
+        btnFriends.className = "flex flex-col items-center justify-center flex-1 h-full text-amber-500 transition relative";
         changeNameBtn.classList.remove('hidden');
         createRoomBtn.classList.add('hidden');
       } else if (tab === 'chats') {
         tabChats.classList.remove('hidden');
         headerTitle.textContent = '채팅';
-        btnChats.className = "flex flex-col items-center justify-center flex-1 h-full text-amber-500 transition";
+        btnChats.className = "flex flex-col items-center justify-center flex-1 h-full text-amber-500 transition relative";
         changeNameBtn.classList.add('hidden');
         createRoomBtn.classList.remove('hidden');
       }
@@ -909,7 +1072,6 @@
         return;
       }
 
-      // undefined 및 빈 이름 데이터 필터링 처리
       const userEntries = Object.entries(usersObj).filter(([_, u]) => u && u.name && u.name !== 'undefined');
       const allUserNames = userEntries.map(([_, u]) => u.name);
       
@@ -955,6 +1117,51 @@
       container.innerHTML = html;
     }
 
+    function updateRoomListBadges() {
+      let totalUnread = 0;
+
+      Object.keys(window.allRoomsData || {}).forEach(roomId => {
+        const joined = isJoinedRoom(roomId);
+        const msgsObj = window.roomMessagesMap[roomId] || {};
+        const lastRead = window.lastReadMap[roomId] || 0;
+        let unreadCount = 0;
+
+        if (joined && window.currentRoomId !== roomId) {
+          Object.values(msgsObj).forEach(m => {
+            if (m && m.type !== 'system' && m.sender !== window.userName && m.timestamp > lastRead) {
+              unreadCount++;
+            }
+          });
+        }
+
+        totalUnread += unreadCount;
+
+        const badgeEl = document.getElementById(`room_unread_${roomId}`);
+        if (badgeEl) {
+          if (unreadCount > 0) {
+            badgeEl.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            badgeEl.classList.remove('hidden');
+            badgeEl.classList.add('flex');
+          } else {
+            badgeEl.classList.add('hidden');
+            badgeEl.classList.remove('flex');
+          }
+        }
+      });
+
+      const totalBadge = document.getElementById('totalUnreadBadge');
+      if (totalBadge) {
+        if (totalUnread > 0) {
+          totalBadge.textContent = totalUnread > 99 ? '99+' : totalUnread;
+          totalBadge.classList.remove('hidden');
+          totalBadge.classList.add('flex');
+        } else {
+          totalBadge.classList.add('hidden');
+          totalBadge.classList.remove('flex');
+        }
+      }
+    }
+
     function renderChatRooms(roomsObj) {
       const container = document.getElementById('chatRoomListContainer');
       const roomsObjVal = roomsObj || {};
@@ -964,6 +1171,14 @@
           return window.isAdminLoggedIn;
         }
         return true;
+      });
+
+      // 내가 참여 중인 방을 상단에 먼저 정렬
+      rooms.sort((a, b) => {
+        const aJoined = isJoinedRoom(a.id) ? 1 : 0;
+        const bJoined = isJoinedRoom(b.id) ? 1 : 0;
+        if (aJoined !== bJoined) return bJoined - aJoined;
+        return (b.createdAt || 0) - (a.createdAt || 0);
       });
 
       const allRoomIds = rooms.map(r => r.id);
@@ -977,28 +1192,36 @@
       rooms.forEach(room => {
         const roomEmoji = window.getRoomEmoji(room.id, allRoomIds);
         const hasPassword = !!room.password;
+        const joined = isJoinedRoom(room.id);
+        const muted = isRoomMuted(room.id);
+        const members = window.roomMembersMap[room.id] || {};
+        const memberCount = Object.keys(members).length;
 
         html += `
           <div class="group relative flex items-center justify-between px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
-            <div onclick="attemptEnterRoom('${room.id}', '${room.name}', ${hasPassword})" class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
-              <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-slate-900 flex items-center justify-center font-black text-2xl shadow-inner shrink-0">
+            <div onclick="attemptEnterRoom('${room.id}', '${escapeHtml(room.name)}', ${hasPassword})" class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+              <div class="relative w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-slate-900 flex items-center justify-center font-black text-2xl shadow-inner shrink-0">
                 ${roomEmoji}
+                ${joined ? '<span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-950 rounded-full" title="참여 중"></span>' : ''}
               </div>
               <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center justify-between mb-1 gap-2">
                   <div class="flex items-center gap-1.5 min-w-0">
                     <h4 class="font-black text-sm text-slate-900 dark:text-white truncate">
-                      ${room.name} 
-                      ${hasPassword ? '<i class="fa-solid fa-lock text-amber-500 text-xs ml-1" title="비밀번호 방"></i>' : ''}
-                      ${room.isSecret ? '<span class="text-[10px] bg-red-100 text-red-600 px-1 rounded ml-1 font-bold">시크릿</span>' : ''}
+                      ${escapeHtml(room.name)}
                     </h4>
+                    <span class="text-xs font-bold text-slate-400 shrink-0">${memberCount}</span>
+                    ${hasPassword ? '<i class="fa-solid fa-lock text-amber-500 text-xs shrink-0" title="비밀번호 방"></i>' : ''}
+                    ${muted && joined ? '<i class="fa-solid fa-bell-slash text-slate-400 text-xs shrink-0" title="알림 꺼짐"></i>' : ''}
+                    ${room.isSecret ? '<span class="text-[10px] bg-red-100 text-red-600 px-1 rounded font-bold shrink-0">시크릿</span>' : ''}
                   </div>
+                  <span id="room_unread_${room.id}" class="hidden min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[11px] font-black rounded-full items-center justify-center shrink-0">0</span>
                 </div>
                 <p id="room_lastmsg_${room.id}" class="text-xs text-slate-500 dark:text-slate-400 truncate">채팅방에 참여해보세요!</p>
               </div>
             </div>
             ${window.isAdminLoggedIn ? `
-              <button onclick="promptDeleteRoom('${room.id}', '${room.name}')" title="채팅방 삭제" class="absolute right-4 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition">
+              <button onclick="promptDeleteRoom('${room.id}', '${escapeHtml(room.name)}')" title="채팅방 삭제" class="ml-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition shrink-0">
                 <i class="fa-solid fa-minus text-xs"></i>
               </button>
             ` : ''}
@@ -1008,37 +1231,35 @@
       container.innerHTML = html;
 
       rooms.forEach(room => {
-        db.ref(`kakao_chat_app/room_members/${room.id}`).on('value', memSnap => {
-          const count = memSnap.exists() ? Object.keys(memSnap.val()).length : 0;
-          const badge = document.getElementById(`room_badge_${room.id}`);
-          if (badge) badge.textContent = count;
-        });
+        db.ref(`kakao_chat_app/messages/${room.id}`).off('value');
+        db.ref(`kakao_chat_app/messages/${room.id}`).limitToLast(50).on('value', msgSnap => {
+          const msgsVal = msgSnap.val() || {};
+          window.roomMessagesMap[room.id] = msgsVal;
 
-        db.ref(`kakao_chat_app/messages/${room.id}`).limitToLast(10).on('value', msgSnap => {
           const lastMsgEl = document.getElementById(`room_lastmsg_${room.id}`);
           if (lastMsgEl) {
-            if (msgSnap.exists()) {
-              const msgs = Object.values(msgSnap.val());
-              let validMsg = '채팅방에 참여해보세요!';
-              for (let i = msgs.length - 1; i >= 0; i--) {
-                const m = msgs[i];
-                if (m && m.text && m.type !== 'system') {
-                  validMsg = m.text;
-                  break;
-                }
+            const msgs = Object.values(msgsVal);
+            let validMsg = '채팅방에 참여해보세요!';
+            for (let i = msgs.length - 1; i >= 0; i--) {
+              const m = msgs[i];
+              if (m && m.text && m.type !== 'system') {
+                validMsg = m.text;
+                break;
               }
-              lastMsgEl.textContent = validMsg;
-            } else {
-              lastMsgEl.textContent = '채팅방에 참여해보세요!';
             }
+            lastMsgEl.textContent = validMsg;
           }
+          updateRoomListBadges();
         });
       });
+
+      updateRoomListBadges();
     }
 
     let pendingRoomAuth = null;
     window.attemptEnterRoom = function(roomId, roomName, hasPassword) {
-      if (hasPassword && !window.isAdminLoggedIn) {
+      // 이미 참여 중인 방은 비밀번호 재입력 없이 바로 입장
+      if (hasPassword && !window.isAdminLoggedIn && !isJoinedRoom(roomId)) {
         pendingRoomAuth = { id: roomId, name: roomName };
         document.getElementById('authRoomNameText').textContent = `[${roomName}] 비밀번호를 입력해 주세요.`;
         document.getElementById('roomAuthPasswordInput').value = '';
@@ -1088,12 +1309,10 @@
         showCustomConfirm('관리자 모드를 로그아웃 하시겠습니까?', (res) => {
           if (res) {
             window.isAdminLoggedIn = false;
-            if (isMobileDevice) {
-              localStorage.removeItem('ssapsao_admin');
-            }
+            if (isMobileDevice) localStorage.removeItem('ssapsao_admin');
             showAlert('관리자 모드가 해제되었습니다.');
-            db.ref('kakao_chat_app/rooms').once('value', snap => renderChatRooms(snap.val() || {}));
-            db.ref('kakao_chat_app/users').once('value', snap => renderFriends(snap.val() || {}));
+            renderChatRooms(window.allRoomsData);
+            renderFriends(window.allUsersData);
             document.getElementById('adminNavBtn').classList.remove('bg-red-100', 'text-red-600');
           }
         });
@@ -1112,14 +1331,12 @@
       const pw = document.getElementById('adminPasswordInput').value;
       if (pw === '7299') {
         window.isAdminLoggedIn = true;
-        if (isMobileDevice) {
-          localStorage.setItem('ssapsao_admin', 'true');
-        }
+        if (isMobileDevice) localStorage.setItem('ssapsao_admin', 'true');
         closeAdminLoginModal();
         showAlert('관리자로 로그인되었습니다. 친구 및 채팅방 우측의 - 버튼으로 삭제할 수 있습니다.');
         document.getElementById('adminNavBtn').classList.add('bg-red-100', 'text-red-600');
-        db.ref('kakao_chat_app/rooms').once('value', snap => renderChatRooms(snap.val() || {}));
-        db.ref('kakao_chat_app/users').once('value', snap => renderFriends(snap.val() || {}));
+        renderChatRooms(window.allRoomsData);
+        renderFriends(window.allUsersData);
       } else {
         showAlert('비밀번호가 틀렸습니다.');
       }
@@ -1177,13 +1394,8 @@
         createdBy: window.userName
       };
 
-      if (hasPassword) {
-        roomData.password = passwordVal;
-      }
-
-      if (window.isAdminLoggedIn) {
-        roomData.isSecret = true;
-      }
+      if (hasPassword) roomData.password = passwordVal;
+      if (window.isAdminLoggedIn) roomData.isSecret = true;
 
       newRoomRef.set(roomData).then(() => {
         closeCreateRoomModal();
@@ -1195,14 +1407,14 @@
     let activeRoomListener = null;
     let activeNoticeListener = null;
     let previousMsgCount = 0;
-    let currentDisconnectRef = null;
 
     window.enterRoom = function(roomId, roomName) {
       window.currentRoomId = roomId;
       window.currentRoomName = roomName;
       previousMsgCount = 0;
 
-      playBeepSound();
+      // 읽음 시간 갱신
+      markRoomAsRead(roomId);
 
       document.getElementById('mainHeader').classList.add('hidden');
       document.getElementById('bottomNav').classList.add('hidden');
@@ -1221,91 +1433,231 @@
       document.getElementById('roomNoticeBanner').classList.remove('hidden');
       document.getElementById('roomNoticeBanner').classList.add('flex');
 
-      const memberRef = db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`);
-      memberRef.set(true);
-      memberRef.onDisconnect().remove();
+      updateRoomMuteUI(roomId);
 
-      const now = new Date();
-      const timeStr = `${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
-      
-      currentDisconnectRef = db.ref(`kakao_chat_app/messages/${roomId}`).push();
-      currentDisconnectRef.onDisconnect().set({
-        id: Date.now() + Math.random(),
-        sender: 'system',
-        text: `${window.userName}님이 퇴장하셨습니다.`,
-        time: timeStr,
-        timestamp: Date.now(),
-        type: 'system'
+      // 처음 참여할 때만 입장 메시지 발송 (이미 참여 중이면 재진입이므로 메시지 없음)
+      const memberRef = db.ref(`kakao_chat_app/room_members/${roomId}/${window.deviceId}`);
+      memberRef.once('value', snap => {
+        const alreadyMember = snap.exists() || isJoinedRoom(roomId);
+        memberRef.set({
+          deviceId: window.deviceId,
+          name: window.userName,
+          emoji: window.userAvatarEmoji,
+          joinedAt: snap.exists() && snap.val().joinedAt ? snap.val().joinedAt : Date.now()
+        });
+
+        // 예전 이름 키로 남아있던 데이터가 있다면 정리
+        if (window.userName && window.userName !== window.deviceId) {
+          db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
+        }
+
+        if (!alreadyMember) {
+          sendSystemMessage(`${window.userName}님이 입장하셨습니다.`);
+        }
       });
 
-      sendSystemMessage(`${window.userName}님이 입장하셨습니다.`);
-
+      if (activeRoomListener) {
+        db.ref(`kakao_chat_app/messages/${roomId}`).off('value', activeRoomListener);
+      }
       const messagesRef = db.ref(`kakao_chat_app/messages/${roomId}`);
       activeRoomListener = messagesRef.on('value', snapshot => {
         const data = snapshot.val() || {};
         const msgList = Object.values(data);
         
         if (previousMsgCount > 0 && msgList.length > previousMsgCount) {
-          playBeepSound();
-          
           const latestMsg = msgList[msgList.length - 1];
-          if (latestMsg && latestMsg.sender !== window.userName && latestMsg.type !== 'system') {
-            sendPushNotification(`${latestMsg.sender} (${roomName})`, latestMsg.text);
+          if (latestMsg && latestMsg.sender !== window.userName && latestMsg.type !== 'system' && !isRoomMuted(roomId)) {
+            playBeepSound();
           }
         }
         previousMsgCount = msgList.length;
 
+        markRoomAsRead(roomId);
         renderMessages(data);
       });
 
-      db.ref(`kakao_chat_app/room_members/${roomId}`).on('value', snap => {
-        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
-        document.getElementById('roomMemberCount').textContent = count;
-      });
+      updateCurrentRoomMemberUI(roomId);
 
+      if (activeNoticeListener) {
+        db.ref(`kakao_chat_app/notices/${roomId}`).off('value', activeNoticeListener);
+      }
       activeNoticeListener = db.ref(`kakao_chat_app/notices/${roomId}`).on('value', snap => {
         const noticeText = snap.val() || '';
         const noticeEl = document.getElementById('noticeText');
-        if (noticeText) {
-          noticeEl.textContent = noticeText;
-        } else {
-          noticeEl.textContent = '공지사항이 없습니다.';
-        }
+        noticeEl.textContent = noticeText || '공지사항이 없습니다.';
       });
     };
 
-    window.leaveCurrentRoom = function() {
+    function updateCurrentRoomMemberUI(roomId) {
+      const membersObj = window.roomMembersMap[roomId] || {};
+      const entries = Object.entries(membersObj);
+      document.getElementById('roomMemberCount').textContent = entries.length;
+      document.getElementById('drawerMemberCount').textContent = entries.length;
+
+      const drawerList = document.getElementById('drawerMemberList');
+      if (!drawerList) return;
+
+      let html = '';
+      entries.forEach(([key, val]) => {
+        const mName = (val && typeof val === 'object' && val.name) ? val.name : key;
+        const isMe = key === window.deviceId || mName === window.userName;
+        const mEmoji = (val && typeof val === 'object' && val.emoji)
+          ? val.emoji
+          : window.getUserAvatar(mName).emoji;
+
+        html += `
+          <div class="flex items-center gap-2.5 py-1">
+            <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-lg shrink-0">
+              ${mEmoji}
+            </div>
+            <div class="flex items-center gap-1.5 min-w-0">
+              ${isMe ? '<span class="w-4 h-4 rounded-full bg-slate-800 dark:bg-amber-400 text-white dark:text-slate-900 text-[9px] font-black flex items-center justify-center shrink-0">나</span>' : ''}
+              <span class="text-xs font-bold text-slate-900 dark:text-white truncate">${escapeHtml(mName)}</span>
+            </div>
+          </div>
+        `;
+      });
+      drawerList.innerHTML = html || `<div class="text-xs text-slate-400">참여자가 없습니다.</div>`;
+    }
+
+    // 단순 화면 이탈 (뒤로가기 / 상단 ← 버튼) — 참여 상태 유지, 퇴장 메시지 미발송
+    function detachRoomViewOnly() {
+      if (!window.currentRoomId) return;
+      const roomId = window.currentRoomId;
+
+      markRoomAsRead(roomId);
+      closeRoomDrawer();
+
+      if (activeRoomListener) {
+        db.ref(`kakao_chat_app/messages/${roomId}`).off('value', activeRoomListener);
+        activeRoomListener = null;
+      }
+      if (activeNoticeListener) {
+        db.ref(`kakao_chat_app/notices/${roomId}`).off('value', activeNoticeListener);
+        activeNoticeListener = null;
+      }
+
+      window.currentRoomId = null;
+      document.getElementById('roomHeader').classList.add('hidden');
+      document.getElementById('roomHeader').classList.remove('flex');
+      document.getElementById('roomNoticeBanner').classList.add('hidden');
+      document.getElementById('roomNoticeBanner').classList.remove('flex');
+      document.getElementById('roomView').classList.add('hidden');
+    }
+
+    window.exitRoomToList = function() {
+      detachRoomViewOnly();
+      history.pushState({ view: 'chats' }, '', '#chats');
+      switchTab('chats', true);
+    };
+
+    // 채팅방 서랍 열기 / 닫기
+    window.openRoomDrawer = function() {
+      if (!window.currentRoomId) return;
+      document.getElementById('drawerRoomTitle').textContent = window.currentRoomName || '채팅방 서랍';
+      updateRoomMuteUI(window.currentRoomId);
+      updateCurrentRoomMemberUI(window.currentRoomId);
+
+      const overlay = document.getElementById('roomDrawerOverlay');
+      const panel = document.getElementById('roomDrawerPanel');
+      overlay.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        panel.classList.remove('translate-x-full');
+      });
+    };
+
+    window.closeRoomDrawer = function() {
+      const overlay = document.getElementById('roomDrawerOverlay');
+      const panel = document.getElementById('roomDrawerPanel');
+      if (!overlay || overlay.classList.contains('hidden')) return;
+      panel.classList.add('translate-x-full');
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+      }, 240);
+    };
+
+    // 방별 알림 토글
+    window.toggleCurrentRoomMute = function() {
+      const roomId = window.currentRoomId;
+      if (!roomId) return;
+
+      if (window.mutedRooms[roomId]) {
+        delete window.mutedRooms[roomId];
+      } else {
+        window.mutedRooms[roomId] = true;
+      }
+      saveMutedRooms();
+      updateRoomMuteUI(roomId);
+      renderChatRooms(window.allRoomsData);
+    };
+
+    function updateRoomMuteUI(roomId) {
+      const muted = isRoomMuted(roomId);
+      const headerMuteIcon = document.getElementById('roomHeaderMuteIcon');
+      const drawerMuteIcon = document.getElementById('drawerMuteIcon');
+      const drawerAlarmCardIcon = document.getElementById('drawerAlarmCardIcon');
+      const drawerAlarmBadge = document.getElementById('drawerAlarmBadge');
+      const drawerAlarmStatusText = document.getElementById('drawerAlarmStatusText');
+      const drawerAlarmTogglePill = document.getElementById('drawerAlarmTogglePill');
+
+      if (muted) {
+        if (headerMuteIcon) headerMuteIcon.classList.remove('hidden');
+        if (drawerMuteIcon) drawerMuteIcon.className = 'fa-solid fa-bell-slash text-base text-slate-400';
+        if (drawerAlarmCardIcon) drawerAlarmCardIcon.className = 'fa-solid fa-bell-slash';
+        if (drawerAlarmBadge) drawerAlarmBadge.className = 'w-9 h-9 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center text-base';
+        if (drawerAlarmStatusText) {
+          drawerAlarmStatusText.textContent = '알림 꺼짐 (이 방의 알림을 받지 않음)';
+          drawerAlarmStatusText.className = 'text-[11px] font-bold text-slate-400';
+        }
+        if (drawerAlarmTogglePill) {
+          drawerAlarmTogglePill.textContent = 'OFF';
+          drawerAlarmTogglePill.className = 'text-[11px] font-black px-2.5 py-1 rounded-full bg-slate-200 text-slate-600';
+        }
+      } else {
+        if (headerMuteIcon) headerMuteIcon.classList.add('hidden');
+        if (drawerMuteIcon) drawerMuteIcon.className = 'fa-solid fa-bell text-base text-amber-500';
+        if (drawerAlarmCardIcon) drawerAlarmCardIcon.className = 'fa-solid fa-bell';
+        if (drawerAlarmBadge) drawerAlarmBadge.className = 'w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-base';
+        if (drawerAlarmStatusText) {
+          drawerAlarmStatusText.textContent = '알림 켜짐 (새 메시지 수신 시 울림)';
+          drawerAlarmStatusText.className = 'text-[11px] font-bold text-emerald-600';
+        }
+        if (drawerAlarmTogglePill) {
+          drawerAlarmTogglePill.textContent = 'ON';
+          drawerAlarmTogglePill.className = 'text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-slate-900';
+        }
+      }
+    }
+
+    // 실제 채팅방 나가기(퇴장) 버튼 처리
+    window.promptExplicitLeaveRoom = function() {
+      closeRoomDrawer();
+      document.getElementById('leaveRoomConfirmModal').classList.remove('hidden');
+    };
+
+    window.closeLeaveRoomConfirmModal = function() {
+      document.getElementById('leaveRoomConfirmModal').classList.add('hidden');
+    };
+
+    window.executeExplicitLeaveRoom = function() {
+      closeLeaveRoomConfirmModal();
       if (!window.currentRoomId) return;
 
       const roomId = window.currentRoomId;
 
-      if (currentDisconnectRef) {
-        currentDisconnectRef.onDisconnect().cancel();
-        currentDisconnectRef = null;
-      }
-
       sendSystemMessage(`${window.userName}님이 퇴장하셨습니다.`, () => {
-        db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
+        db.ref(`kakao_chat_app/room_members/${roomId}/${window.deviceId}`).remove();
+        if (window.userName) {
+          db.ref(`kakao_chat_app/room_members/${roomId}/${window.userName}`).remove();
+        }
+        delete window.mutedRooms[roomId];
+        delete window.lastReadMap[roomId];
+        saveMutedRooms();
+        saveLastReadMap();
 
-        setTimeout(() => {
-          if (activeRoomListener) {
-            db.ref(`kakao_chat_app/messages/${roomId}`).off('value', activeRoomListener);
-            activeRoomListener = null;
-          }
-          if (activeNoticeListener) {
-            db.ref(`kakao_chat_app/notices/${roomId}`).off('value', activeNoticeListener);
-            activeNoticeListener = null;
-          }
-
-          window.currentRoomId = null;
-          document.getElementById('roomHeader').classList.add('hidden');
-          document.getElementById('roomHeader').classList.remove('flex');
-          document.getElementById('roomNoticeBanner').classList.add('hidden');
-          document.getElementById('roomNoticeBanner').classList.remove('flex');
-          document.getElementById('roomView').classList.add('hidden');
-
-          switchTab('chats', true);
-        }, 100);
+        detachRoomViewOnly();
+        history.pushState({ view: 'chats' }, '', '#chats');
+        switchTab('chats', true);
       });
     };
 
@@ -1325,7 +1677,7 @@
         time: timeStr,
         timestamp: Date.now(),
         type: 'system'
-      }, (error) => {
+      }, () => {
         if (callback) callback();
       });
     }
@@ -1346,12 +1698,14 @@
       db.ref(`kakao_chat_app/messages/${window.currentRoomId}`).push({
         id: Date.now() + Math.random(),
         sender: window.userName,
+        senderId: window.deviceId,
         text: text,
         time: timeStr,
         timestamp: Date.now(),
         type: 'chat'
       });
 
+      markRoomAsRead(window.currentRoomId);
       input.value = '';
       input.focus();
     };
@@ -1393,7 +1747,7 @@
           html += `
             <div class="flex justify-center my-2">
               <span class="bg-black/10 dark:bg-white/10 text-slate-700 dark:text-slate-300 text-[11px] font-bold px-3 py-1 rounded-full backdrop-blur-xs">
-                ${m.text}
+                ${escapeHtml(m.text)}
               </span>
             </div>
           `;
@@ -1421,7 +1775,7 @@
                 ${avatarEmoji}
               </div>
               <div class="flex flex-col items-start gap-1">
-                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 ml-0.5">${m.sender}</span>
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 ml-0.5">${escapeHtml(m.sender)}</span>
                 <div class="flex items-end gap-1.5">
                   <div class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-semibold rounded-2xl bubble-other px-3.5 py-2 max-w-[75%] break-words leading-relaxed shadow-xs border border-black/5">
                     ${escapeHtml(m.text)}
@@ -1444,17 +1798,16 @@
     }
 
     function escapeHtml(text) {
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+      if (!text) return '';
+      return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-
-    // 뒤로가기 / 히스토리 네비게이션 관리
+    // 뒤로가기 / 히스토리 네비게이션 관리 (퇴장시키지 않고 목록 화면만 복귀)
     window.addEventListener('popstate', function (event) {
       const state = event.state;
 
       if (window.currentRoomId) {
-        // 채팅방에 있었다면 나가기 처리
-        leaveCurrentRoom();
+        detachRoomViewOnly();
       }
 
       if (state && state.view) {
@@ -1464,7 +1817,7 @@
           switchTab(state.view, true);
         }
       } else {
-        switchTab('friends', true);
+        switchTab('chats', true);
       }
     });
   </script>
