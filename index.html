@@ -2,7 +2,7 @@
 <html lang="ko" class="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>쌉싸오톡</title>
   
   <meta name="mobile-web-app-capable" content="yes">
@@ -42,11 +42,11 @@
       background-color: #020617;
     }
     #appContainer {
-      position: fixed;
+      position: absolute;
       top: 0;
       left: 0;
       right: 0;
-      height: 100dvh;
+      bottom: 0;
       width: 100%;
       max-width: 430px;
       margin: 0 auto;
@@ -139,7 +139,7 @@
     </div>
 
     <!-- MAIN BODY CONTENT AREA -->
-    <div id="appBody" class="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#abc1d1] dark:bg-slate-950">
+    <div id="appBody" class="flex-1 flex flex-col overflow-hidden relative bg-[#abc1d1] dark:bg-slate-950">
       
       <!-- TAB 1: FRIENDS -->
       <div id="tabFriends" class="flex-1 overflow-y-auto bg-white dark:bg-slate-900 flex flex-col">
@@ -193,16 +193,13 @@
       </div>
 
       <!-- TAB 3: CHAT ROOM DETAIL VIEW -->
-      <div id="roomView" class="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#abc1d1] dark:bg-slate-900 hidden">
-        <main class="flex-1 min-h-0 px-3 py-3 overflow-y-auto space-y-3 no-scrollbar flex flex-col" id="chatContainer"></main>
+      <div id="roomView" class="flex-1 flex flex-col overflow-hidden bg-[#abc1d1] dark:bg-slate-900 hidden">
+        <main class="flex-1 px-3 py-3 overflow-y-auto space-y-3 no-scrollbar flex flex-col" id="chatContainer"></main>
         
-        <footer id="chatInputFooter" class="bg-white dark:bg-slate-950 px-2.5 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 shrink-0">
-          <button onclick="sendCallAlert()" id="callBtn" title="상대방 호출" class="w-10 h-10 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 rounded-xl transition flex items-center justify-center font-black shadow-xs shrink-0">
-            <i class="fa-solid fa-bell text-sm"></i>
-          </button>
-          <input type="search" id="messageInput" placeholder="" onfocus="handleInputFocus()" onkeypress="if(event.key==='Enter') sendMessage()"
+        <footer class="bg-white dark:bg-slate-950 px-3 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0">
+          <input type="search" id="messageInput" placeholder="" onkeypress="if(event.key==='Enter') sendMessage()"
             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="random_chat_msg_input_field"
-            class="flex-1 min-w-0 bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-amber-400 rounded-xl px-3.5 py-2.5 text-sm font-medium outline-none transition text-slate-900 dark:text-white">
+            class="flex-1 min-w-0 bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-amber-400 rounded-xl px-4 py-2.5 text-sm font-medium outline-none transition text-slate-900 dark:text-white">
           <button onclick="sendMessage()" id="sendBtn" class="w-10 h-10 bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-900 rounded-xl transition flex items-center justify-center font-black shadow-sm shrink-0">
             <i class="fa-solid fa-paper-plane text-sm"></i>
           </button>
@@ -577,8 +574,8 @@
       syncFcmTokenToDb(token);
     };
 
-    // 채팅 메시지/호출 전송 시 Render 푸시 서버로 알림 발송 (발신자 본인/내 토큰 제외)
-    async function notifyRoomMembersOnMessage(roomId, roomName, messageText, isCall = false) {
+    // 채팅 메시지 전송 시 Render 푸시 서버로 알림 발송 (발신자 본인/내 토큰 제외)
+    async function notifyRoomMembersOnMessage(roomId, roomName, messageText) {
       if (!roomId) return;
 
       const myToken = localStorage.getItem('ssapsao_fcmToken') || '';
@@ -611,11 +608,10 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tokens: uniqueTokens,
-            title: isCall ? `[${roomName}] ${window.userName} 호출` : `[${roomName}] ${window.userName}`,
+            title: `[${roomName}] ${window.userName}`,
             body: messageText,
             roomId: roomId,
-            roomName: roomName,
-            type: isCall ? 'call' : 'chat'
+            roomName: roomName
           })
         });
 
@@ -840,37 +836,6 @@
       return !!window.mutedRooms[roomId];
     }
 
-    function syncViewportLayout() {
-      const container = document.getElementById('appContainer');
-      const chatContainer = document.getElementById('chatContainer');
-      if (!container) return;
-
-      if (window.visualViewport) {
-        const vv = window.visualViewport;
-        container.style.height = `${vv.height}px`;
-        container.style.top = `${vv.offsetTop}px`;
-      } else {
-        container.style.height = `${window.innerHeight}px`;
-        container.style.top = '0px';
-      }
-
-      if (chatContainer && window.currentRoomId) {
-        setTimeout(() => {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }, 60);
-      }
-    }
-
-    window.handleInputFocus = function() {
-      syncViewportLayout();
-      setTimeout(() => {
-        const chatContainer = document.getElementById('chatContainer');
-        if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-      }, 220);
-    };
-
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
         const splash = document.getElementById('splashScreen');
@@ -884,7 +849,6 @@
       const savedEmoji = localStorage.getItem('ssapsao_userEmoji');
 
       renderEmojiPicker();
-      syncViewportLayout();
 
       if (!history.state) {
         history.replaceState({ view: 'friends' }, '', '#friends');
@@ -905,10 +869,20 @@
       }
 
       if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', syncViewportLayout);
-        window.visualViewport.addEventListener('scroll', syncViewportLayout);
+        const handleResize = () => {
+          const container = document.getElementById('appContainer');
+          if (container) {
+            container.style.height = `${window.visualViewport.height}px`;
+            container.style.bottom = `${window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop}px`;
+          }
+          const chatContainer = document.getElementById('chatContainer');
+          if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+          }
+        };
+        window.visualViewport.addEventListener('resize', handleResize);
+        window.visualViewport.addEventListener('scroll', handleResize);
       }
-      window.addEventListener('resize', syncViewportLayout);
     });
 
     function renderEmojiPicker() {
@@ -1507,7 +1481,6 @@
       document.getElementById('roomNoticeBanner').classList.remove('hidden');
       document.getElementById('roomNoticeBanner').classList.add('flex');
 
-      syncViewportLayout();
       updateRoomMuteUI(roomId);
 
       const memberRef = db.ref(`kakao_chat_app/room_members/${roomId}/${window.deviceId}`);
@@ -1752,33 +1725,6 @@
       });
     }
 
-    window.sendCallAlert = function() {
-      if (!window.currentRoomId) return;
-
-      const roomId = window.currentRoomId;
-      const roomName = window.currentRoomName || '채팅방';
-      const callText = '🔔 호출!';
-
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const ampm = hours >= 12 ? '오후' : '오전';
-      const timeStr = `${ampm} ${hours % 12 || 12}:${minutes}`;
-
-      db.ref(`kakao_chat_app/messages/${roomId}`).push({
-        id: Date.now() + Math.random(),
-        sender: window.userName,
-        senderId: window.deviceId,
-        text: callText,
-        time: timeStr,
-        timestamp: Date.now(),
-        type: 'call'
-      });
-
-      notifyRoomMembersOnMessage(roomId, roomName, callText, true);
-      markRoomAsRead(roomId);
-    };
-
     window.sendMessage = function() {
       const input = document.getElementById('messageInput');
       const text = input.value.trim();
@@ -1803,7 +1749,7 @@
         type: 'chat'
       });
 
-      notifyRoomMembersOnMessage(roomId, roomName, text, false);
+      notifyRoomMembersOnMessage(roomId, roomName, text);
 
       markRoomAsRead(roomId);
       input.value = '';
@@ -1839,7 +1785,7 @@
 
       let html = '';
       messageEntries.forEach(([msgKey, m]) => {
-        const isMyMsg = (m.senderId && m.senderId === window.deviceId) || (m.sender && m.sender === window.userName);
+        const isMyMsg = m.sender === window.userName;
         const isWithin1Hour = m.timestamp && (Date.now() - m.timestamp < 3600 * 1000);
         const canDelete = window.isAdminLoggedIn || (isMyMsg && isWithin1Hour);
 
@@ -1922,6 +1868,3 @@
   </script>
 </body>
 </html>
-```[cite: 6]
-
-적용해 보시고, 호출 버튼 동작이나 키패드 위치가 어색한 부분 있으면 바로 말씀해 주세요!
