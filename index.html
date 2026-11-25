@@ -574,10 +574,11 @@
       syncFcmTokenToDb(token);
     };
 
-    // 채팅 메시지 전송 시 Render 푸시 서버로 알림 발송
+    // 채팅 메시지 전송 시 Render 푸시 서버로 알림 발송 (발신자 본인/내 토큰 제외)
     async function notifyRoomMembersOnMessage(roomId, roomName, messageText) {
       if (!roomId) return;
 
+      const myToken = localStorage.getItem('ssapsao_fcmToken') || '';
       const membersObj = window.roomMembersMap[roomId] || {};
       const tokens = [];
 
@@ -591,8 +592,10 @@
           Object.values(window.allUsersData || {}).find(u => u && u.name === mName);
 
         const isMutedInRoom = !!(userRecord && userRecord.mutedRooms && userRecord.mutedRooms[roomId]);
-        if (!isMutedInRoom && userRecord && userRecord.fcmToken) {
-          tokens.push(userRecord.fcmToken);
+        const targetToken = userRecord && userRecord.fcmToken;
+
+        if (!isMutedInRoom && targetToken && targetToken !== myToken) {
+          tokens.push(targetToken);
         }
       });
 
@@ -973,7 +976,9 @@
               updateRoomListBadges();
             }
 
-            if (m.timestamp > appStartTime && m.sender !== window.userName && m.type !== 'system') {
+            const isMyMessage = (m.senderId && m.senderId === window.deviceId) || (m.sender && m.sender === window.userName);
+
+            if (m.timestamp > appStartTime && !isMyMessage && m.type !== 'system') {
               if (window.currentRoomId !== roomId && isJoinedRoom(roomId) && !isRoomMuted(roomId)) {
                 const roomName = rooms[roomId] ? rooms[roomId].name : '쌉싸오톡';
                 playBeepSound();
@@ -1166,7 +1171,8 @@
 
         if (joined && window.currentRoomId !== roomId) {
           Object.values(msgsObj).forEach(m => {
-            if (m && m.type !== 'system' && m.sender !== window.userName && m.timestamp > lastRead) {
+            const isMyMsg = (m.senderId && m.senderId === window.deviceId) || (m.sender && m.sender === window.userName);
+            if (m && m.type !== 'system' && !isMyMsg && m.timestamp > lastRead) {
               unreadCount++;
             }
           });
@@ -1506,7 +1512,8 @@
         
         if (previousMsgCount > 0 && msgList.length > previousMsgCount) {
           const latestMsg = msgList[msgList.length - 1];
-          if (latestMsg && latestMsg.sender !== window.userName && latestMsg.type !== 'system' && !isRoomMuted(roomId)) {
+          const isMyMsg = latestMsg && ((latestMsg.senderId && latestMsg.senderId === window.deviceId) || (latestMsg.sender && latestMsg.sender === window.userName));
+          if (latestMsg && !isMyMsg && latestMsg.type !== 'system' && !isRoomMuted(roomId)) {
             playBeepSound();
           }
         }
@@ -1718,7 +1725,7 @@
       });
     }
 
-window.sendMessage = function() {
+    window.sendMessage = function() {
       const input = document.getElementById('messageInput');
       const text = input.value.trim();
       if (!text || !window.currentRoomId) return;
@@ -1748,6 +1755,7 @@ window.sendMessage = function() {
       input.value = '';
       input.focus();
     };
+
     window.openNoticeModal = function() {
       const currentText = document.getElementById('noticeText').textContent;
       document.getElementById('noticeInput').value = currentText === '공지사항이 없습니다.' ? '' : currentText;
