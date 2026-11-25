@@ -524,7 +524,7 @@
 
     function saveMutedRooms() {
       localStorage.setItem('ssapsao_mutedRooms', JSON.stringify(window.mutedRooms));
-      if (window.deviceId) {
+      if (window.deviceId && typeof db !== 'undefined') {
         db.ref(`kakao_chat_app/users/${window.deviceId}/mutedRooms`).set(window.mutedRooms);
       }
     }
@@ -546,13 +546,39 @@
       }
     }
 
-    // 추후 안드로이드 앱(WebView / Capacitor)에서 FCM 토큰 전달 시 호출할 전역 브릿지
-    window.registerNativeFcmToken = function(token) {
+    const firebaseConfig = {
+      apiKey: "AIzaSyCUizcPj8AX7ExqX1jMjeVwnX0vQ_jbswk",
+      authDomain: "chat-f04e4.firebaseapp.com",
+      projectId: "chat-f04e4",
+      storageBucket: "chat-f04e4.firebasestorage.app",
+      messagingSenderId: "1039029961929",
+      appId: "1:1039029961929:web:176dde5fe9n3e0a54ff918",
+      measurementId: "G-5KCGZHJN21",
+      databaseURL: "https://chat-f04e4-default-rtdb.firebaseio.com"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let deviceId = localStorage.getItem('ssapsao_deviceId');
+    if (!deviceId) {
+      deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      localStorage.setItem('ssapsao_deviceId', deviceId);
+    }
+    window.deviceId = deviceId;
+
+    function syncFcmTokenToDb(token) {
       if (!token) return;
       localStorage.setItem('ssapsao_fcmToken', token);
       if (window.deviceId) {
         db.ref(`kakao_chat_app/users/${window.deviceId}/fcmToken`).set(token);
       }
+    }
+
+    // 안드로이드 앱(WebView)에서 FCM 토큰 전달 시 호출할 전역 브릿지
+    window.registerNativeFcmToken = function(token) {
+      if (!token) return;
+      syncFcmTokenToDb(token);
     };
 
     // 서비스 워커 등록 처리
@@ -719,27 +745,6 @@
     }
     setInterval(updateStatusBarTime, 1000);
     updateStatusBarTime();
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCUizcPj8AX7ExqX1jMjeVwnX0vQ_jbswk",
-      authDomain: "chat-f04e4.firebaseapp.com",
-      projectId: "chat-f04e4",
-      storageBucket: "chat-f04e4.firebasestorage.app",
-      messagingSenderId: "1039029961929",
-      appId: "1:1039029961929:web:176dde5fe9n3e0a54ff918",
-      measurementId: "G-5KCGZHJN21",
-      databaseURL: "https://chat-f04e4-default-rtdb.firebaseio.com"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    
-    let deviceId = localStorage.getItem('ssapsao_deviceId');
-    if (!deviceId) {
-      deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-      localStorage.setItem('ssapsao_deviceId', deviceId);
-    }
-    window.deviceId = deviceId;
 
     window.userName = '';
     window.userAvatarEmoji = '😀';
